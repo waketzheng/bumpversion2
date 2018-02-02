@@ -10,11 +10,11 @@ long_description = re.sub(
 )
 
 setup(
-    name='bump2version',
+    name='advbumpversion',
     version='0.5.7',
     url='https://github.com/c4urself/bump2version',
-    author='Christian Verkerk',
-    author_email='christianverkerk@ymail.com',
+    author='Sebastien Andrivet',
+    author_email='sebastien@andrivet.com',
     license='MIT',
     packages=['bumpversion'],
     description=description,
