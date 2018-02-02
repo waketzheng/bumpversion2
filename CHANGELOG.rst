@@ -3,17 +3,18 @@
 Changes
 =======
 
-**v0.9.0**
+**v1.0.0**
 
 Fork of fork. The project is renamed **advbumpversion** to avoid confusion with other forks.
 The following Push requests are merged in this project:
 
 - `PR#8 <https://github.com/c4urself/bump2version/pull/8>`_ from @ekoh: Add Python 3.5 and 3.6 to the supported versions: Add Python 3.5 and 3.6 to the supported versions
-- `PR#9 <https://github.com/c4urself/bump2version/pull/9>`_ from @coredumperror: Added error checking for version part argument
 - `PR#117 <https://github.com/peritus/bumpversion/pull/117>`_ from from @chadawagner: allow multiple config sections per file
 - `PR#136 <https://github.com/peritus/bumpversion/pull/136>`_ from @vadeg: Fix documentation example with 'optional_value'
 - `PR#138 <https://github.com/peritus/bumpversion/pull/138>`_ from @smsearcy: Fixes TypeError in Python 3 on Windows
 - `PR#157 <https://github.com/peritus/bumpversion/pull/157>`_ from todd-dembrey: Fix verbose tags
+
+I consider this project stable enough to raise the version to 1.0.0.
 
 **v0.5.7**
 

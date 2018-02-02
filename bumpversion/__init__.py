@@ -9,7 +9,7 @@ except ImportError:
 
 try:
     from StringIO import StringIO
-except:
+except ImportError:
     from io import StringIO
 
 
@@ -27,29 +27,30 @@ from tempfile import NamedTemporaryFile
 
 import sys
 import codecs
+import logging
+from argparse import _AppendAction
 
 from bumpversion.version_part import VersionPart, NumericVersionPartConfiguration, ConfiguredVersionPartConfiguration
 
 if sys.version_info[0] == 2:
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 
-__VERSION__ = '0.6.0-dev'
+__VERSION__ = '1.0.0'
 
 DESCRIPTION = 'bumpversion: v{} (using Python v{})'.format(
     __VERSION__,
     sys.version.split("\n")[0].split(" ")[0],
 )
 
-import logging
 logger = logging.getLogger("bumpversion.logger")
 logger_list = logging.getLogger("bumpversion.list")
 
-from argparse import _AppendAction
+
 class DiscardDefaultIfSpecifiedAppendAction(_AppendAction):
 
-    '''
+    """
     Fixes bug http://bugs.python.org/issue16399 for 'append' action
-    '''
+    """
 
     def __call__(self, parser, namespace, values, option_string=None):
         if getattr(self, "_discarded_default", None) is None:
@@ -59,10 +60,12 @@ class DiscardDefaultIfSpecifiedAppendAction(_AppendAction):
         super(DiscardDefaultIfSpecifiedAppendAction, self).__call__(
                 parser, namespace, values, option_string=None)
 
+
 time_context = {
     'now': datetime.now(),
     'utcnow': datetime.utcnow(),
 }
+
 
 class BaseVCS(object):
 
@@ -195,11 +198,13 @@ class Mercurial(BaseVCS):
             command += ['--message', message]
         subprocess.check_output(command)
 
+
 VCS = [Git, Mercurial]
 
 
 def prefixed_environ():
     return dict((("${}".format(key), value) for key, value in os.environ.items()))
+
 
 class ConfiguredFile(object):
 
@@ -293,24 +298,30 @@ class ConfiguredFile(object):
     def __repr__(self):
         return '<bumpversion.ConfiguredFile:{}>'.format(self.path)
 
+
 class IncompleteVersionRepresenationException(Exception):
     def __init__(self, message):
         self.message = message
+
 
 class MissingValueForSerializationException(Exception):
     def __init__(self, message):
         self.message = message
 
+
 class WorkingDirectoryIsDirtyException(Exception):
     def __init__(self, message):
         self.message = message
+
 
 class MercurialDoesNotSupportSignedTagsException(Exception):
     def __init__(self, message):
         self.message = message
 
+
 def keyvaluestring(d):
     return ", ".join("{}={}".format(k, v) for k, v in sorted(d.items()))
+
 
 class Version(object):
 
@@ -336,7 +347,7 @@ class Version(object):
         new_values = {}
 
         for label in order:
-            if not label in self._values:
+            if label not in self._values:
                 continue
             elif label == part_name:
                 new_values[label] = self._values[label].bump()
@@ -349,6 +360,7 @@ class Version(object):
         new_version = Version(new_values)
 
         return new_version
+
 
 class VersionConfig(object):
 
@@ -373,7 +385,8 @@ class VersionConfig(object):
         self.search = search
         self.replace = replace
 
-    def _labels_for_format(self, serialize_format):
+    @staticmethod
+    def _labels_for_format(serialize_format):
         return (
             label
             for _, label, _, _ in Formatter().parse(serialize_format)
@@ -395,13 +408,12 @@ class VersionConfig(object):
 
         _parsed = {}
         if not match:
-            logger.warn("Evaluating 'parse' option: '{}' does not parse current version '{}'".format(
+            logger.warning("Evaluating 'parse' option: '{}' does not parse current version '{}'".format(
                 self.parse_regex.pattern, version_string))
             return
 
         for key, value in match.groupdict().items():
             _parsed[key] = VersionPart(value, self.part_configs.get(key))
-
 
         v = Version(_parsed, version_string)
 
@@ -427,8 +439,8 @@ class VersionConfig(object):
 
         except KeyError as e:
             missing_key = getattr(e,
-                'message', # Python 2
-                e.args[0] # Python 3
+                                  'message',  # Python 2
+                                  e.args[0]   # Python 3
             )
             raise MissingValueForSerializationException(
                 "Did not find key {} in {} when serializing version number".format(
@@ -464,7 +476,6 @@ class VersionConfig(object):
 
         return serialized
 
-
     def _choose_serialize_format(self, version, context):
 
         chosen = None
@@ -496,6 +507,7 @@ class VersionConfig(object):
         # logger.info("Serialized to '{}'".format(serialized))
         return serialized
 
+
 OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES = [
     '--config-file',
     '--current-version',
@@ -523,24 +535,20 @@ def split_args_in_optional_and_positional(args):
         if i > 0:
             previous = args[i-1]
 
-        if ((not arg.startswith('-'))  and
-            (previous not in OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES)):
+        if not arg.startswith('-') and (previous not in OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES):
             positions.append(i)
 
     positionals = [arg for i, arg in enumerate(args) if i in positions]
     args = [arg for i, arg in enumerate(args) if i not in positions]
 
-    return (positionals, args)
+    return positionals, args
+
 
 def main(original_args=None):
 
     positionals, args = split_args_in_optional_and_positional(
       sys.argv[1:] if original_args is None else original_args
     )
-
-    if len(positionals) <= 0 or positionals[0] not in ('major', 'minor', 'patch'):
-        print("ERROR: Must provide a valid version part: 'major', 'minor', or 'patch'")
-        return 1
 
     if len(positionals[1:]) > 2:
         warnings.warn("Giving multiple files on the command line will be deprecated, please use [bumpversion:file:...] in a config file.", PendingDeprecationWarning)
@@ -574,12 +582,12 @@ def main(original_args=None):
         logger.addHandler(ch)
 
     if len(logger_list.handlers) == 0:
-       ch2 = logging.StreamHandler(sys.stdout)
-       ch2.setFormatter(logformatter)
-       logger_list.addHandler(ch2)
+        ch2 = logging.StreamHandler(sys.stdout)
+        ch2.setFormatter(logformatter)
+        logger_list.addHandler(ch2)
 
     if known_args.list:
-          logger_list.setLevel(1)
+        logger_list.setLevel(1)
 
     log_level = {
         0: logging.WARNING,
@@ -629,7 +637,7 @@ def main(original_args=None):
         logger.info("Reading config file {}:".format(config_file))
         logger.info(io.open(config_file, 'rt', encoding='utf-8').read())
 
-        config.readfp(io.open(config_file, 'rt', encoding='utf-8'))
+        config.read_file(io.open(config_file, 'rt', encoding='utf-8'))
 
         log_config = StringIO()
         config.write(log_config)
@@ -669,13 +677,13 @@ def main(original_args=None):
 
             if section_prefix == "part":
 
-                ThisVersionPartConfiguration = NumericVersionPartConfiguration
+                this_version_part_configuration = NumericVersionPartConfiguration
 
                 if 'values' in section_config:
                     section_config['values'] = list(filter(None, (x.strip() for x in section_config['values'].splitlines())))
-                    ThisVersionPartConfiguration = ConfiguredVersionPartConfiguration
+                    this_version_part_configuration = ConfiguredVersionPartConfiguration
 
-                part_configs[section_value] = ThisVersionPartConfiguration(**section_config)
+                part_configs[section_value] = this_version_part_configuration(**section_config)
 
             elif section_prefix == "file":
 
@@ -686,16 +694,16 @@ def main(original_args=None):
 
                 section_config['part_configs'] = part_configs
 
-                if not 'parse' in section_config:
+                if 'parse' not in section_config:
                     section_config['parse'] = defaults.get("parse", '(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)')
 
-                if not 'serialize' in section_config:
+                if 'serialize' not in section_config:
                     section_config['serialize'] = defaults.get('serialize', [str('{major}.{minor}.{patch}')])
 
-                if not 'search' in section_config:
+                if 'search' not in section_config:
                     section_config['search'] = defaults.get("search", '{current_version}')
 
-                if not 'replace' in section_config:
+                if 'replace' not in section_config:
                     section_config['replace'] = defaults.get("replace", '{new_version}')
 
                 files.append(ConfiguredFile(filename, VersionConfig(**section_config)))
@@ -749,7 +757,7 @@ def main(original_args=None):
 
     new_version = None
 
-    if not 'new_version' in defaults and known_args.current_version:
+    if 'new_version' not in defaults and known_args.current_version:
         try:
             if current_version and len(positionals) > 0:
                 logger.info("Attempting to increment part '{}'".format(positionals[0]))
@@ -775,12 +783,12 @@ def main(original_args=None):
 
     parser3.add_argument('--current-version', metavar='VERSION',
                          help='Version that needs to be updated',
-                         required=not 'current_version' in defaults)
+                         required='current_version' not in defaults)
     parser3.add_argument('--dry-run', '-n', action='store_true',
                          default=False, help="Don't write any files, just pretend.")
     parser3.add_argument('--new-version', metavar='VERSION',
                          help='New version that should be in the files',
-                         required=not 'new_version' in defaults)
+                         required='new_version' not in defaults)
 
     commitgroup = parser3.add_mutually_exclusive_group()
 
@@ -798,16 +806,17 @@ def main(original_args=None):
 
     signtagsgroup = parser3.add_mutually_exclusive_group()
     signtagsgroup.add_argument('--sign-tags', action='store_true', dest="sign_tags",
-                          help='Sign tags if created', default=defaults.get("sign_tags", False))
+                               help='Sign tags if created', default=defaults.get("sign_tags", False))
     signtagsgroup.add_argument('--no-sign-tags', action='store_false', dest="sign_tags",
-                          help='Do not sign tags if created', default=argparse.SUPPRESS)
+                               help='Do not sign tags if created', default=argparse.SUPPRESS)
 
     parser3.add_argument('--tag-name', metavar='TAG_NAME',
                          help='Tag name (only works with --tag)',
                          default=defaults.get('tag_name', 'v{new_version}'))
 
     parser3.add_argument('--tag-message', metavar='TAG_MESSAGE', dest='tag_message',
-                         help='Tag message', default=defaults.get('tag_message', 'Bump version: {current_version} → {new_version}'))
+                         help='Tag message', default=defaults.get('tag_message',
+                                                                  'Bump version: {current_version} → {new_version}'))
 
     parser3.add_argument('--message', '-m', metavar='COMMIT_MSG',
                          help='Commit message',
@@ -815,7 +824,7 @@ def main(original_args=None):
 
     file_names = []
     if 'files' in defaults:
-        assert defaults['files'] != None
+        assert defaults['files'] is not None
         file_names = defaults['files'].split(' ')
 
     parser3.add_argument('part',
@@ -845,7 +854,7 @@ def main(original_args=None):
                 vcs.assert_nondirty()
             except WorkingDirectoryIsDirtyException as e:
                 if not defaults['allow_dirty']:
-                    logger.warn(
+                    logger.warning(
                         "{}\n\nUse --allow-dirty to override this if you know what you're doing.".format(e.message))
                     raise
             break
@@ -945,12 +954,16 @@ def main(original_args=None):
             vcs.commit(message=commit_message)
 
     if prepare_tag:
+        sign_tags = args.sign_tags
         tag_name = args.tag_name.format(**vcs_context)
-        logger.info("{} '{}' in {}".format(
+        tag_message = args.tag_message.format(**vcs_context)
+        logger.info("{} '{}' {} in {} and {}".format(
             "Would tag" if not commit_tag else "Tagging",
             tag_name,
-            vcs.__name__
+            "with message '{}'".format(tag_message) if tag_message else "without message",
+            vcs.__name__,
+            "signing" if sign_tags else "not signing"
         ))
 
         if commit_tag:
-            vcs.tag(tag_name)
+            vcs.tag(sign_tags, tag_name, tag_message)

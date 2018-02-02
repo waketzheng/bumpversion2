@@ -1,5 +1,4 @@
 import re
-import datetime
 
 
 class NumericFunction(object):
@@ -22,8 +21,7 @@ class NumericFunction(object):
 
         if first_value is not None:
             try:
-                part_prefix, part_numeric, part_suffix = self.FIRST_NUMERIC.search(
-                    first_value).groups()
+                self.FIRST_NUMERIC.search(first_value).groups()
             except AttributeError:
                 raise ValueError(
                     "The given first value {} does not contain any digit".format(first_value))

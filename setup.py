@@ -4,19 +4,18 @@ from setuptools import setup
 description = 'Version-bump your software with a single command!'
 
 long_description = re.sub(
-  "\`(.*)\<#.*\>\`\_",
+  "`(.*)<#.*>`_",
   r"\1",
   str(open('README.rst', 'rb').read()).replace(description, '')
 )
 
 setup(
     name='advbumpversion',
-    version='0.6.0-dev',
-    url='https://github.com/c4urself/bump2version',
+    version='1.0.0',
+    url='https://github.com/andrivet/advbumpversion',
     author='Sebastien Andrivet',
     author_email='sebastien@andrivet.com',
     license='MIT',
-    packages=['bumpversion'],
     description=description,
     long_description=long_description,
     entry_points={
@@ -41,5 +40,5 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: PyPy',
-    ],
+    ], tests_require=['pytest', 'mock']
 )

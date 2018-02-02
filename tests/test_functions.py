@@ -17,7 +17,7 @@ def test_numeric_init_w_first_value():
 
 def test_numeric_init_non_numeric_first_value():
     with pytest.raises(ValueError):
-        func = NumericFunction(first_value='a')
+        NumericFunction(first_value='a')
 
 
 def test_numeric_bump_simple_number():
@@ -58,22 +58,17 @@ def test_values_init_w_correct_optional_and_first_value():
 
 def test_values_init_w_empty_values():
     with pytest.raises(ValueError):
-        func = ValuesFunction([])
+        ValuesFunction([])
 
 
 def test_values_init_w_incorrect_optional_value():
     with pytest.raises(ValueError):
-        func = ValuesFunction([0, 1, 2], optional_value=3)
+        ValuesFunction([0, 1, 2], optional_value=3)
 
 
 def test_values_init_w_incorrect_first_value():
     with pytest.raises(ValueError):
-        func = ValuesFunction([0, 1, 2], first_value=3)
-
-
-def test_values_bump():
-    func = ValuesFunction([0, 5, 10])
-    assert func.bump(0) == 5
+        ValuesFunction([0, 1, 2], first_value=3)
 
 
 def test_values_bump():

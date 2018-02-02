@@ -5,7 +5,7 @@ advbumpversion
 Fork
 ====
 
-This is a fork of a fork.
+This is a fork (**advbumpversion**) of a fork (**bump2version**).
 
 The excellent original project that can be found here: https://github.com/peritus/bumpversion.
 Unfortunately it seems like development has been stuck for some time and no activity has been seen from the
@@ -16,6 +16,7 @@ Christian Verkerk has made some Pull Request merges and this project (renamed **
 I have merged other Push Requests, in particular the ability to have more than one rule for a file, in a new project **advbumpversion**.
 Look at :ref:`CHANGELOG <changelog>` to see all the changes.
 
+Note: For compatibility, this project declares ``advbumpversion``, ``bump2version`` and ``bumpversion``. The remaining of this document uses ``bumpversion`` in command-line examples.
 
 Introduction
 ============
@@ -41,7 +42,7 @@ operations.
 
 ::
 
-    advbumpversion [options] part [file]
+    bumpversion [options] part [file]
 
 
 ``part`` (required)
@@ -51,7 +52,7 @@ operations.
 
   Example `bumping 0.5.1 to 0.6.0`::
 
-     advbumpversion --current-version 0.5.1 minor src/VERSION
+     bumpversion --current-version 0.5.1 minor src/VERSION
 
 ``[file]``
   **default: none** (optional)
@@ -64,13 +65,13 @@ operations.
 
   Example `bumping 1.1.9 to 2.0.0`::
 
-     advbumpversion --current-version 1.1.9 major setup.py
+     bumpversion --current-version 1.1.9 major setup.py
 
 Configuration
 +++++++++++++
 
 All options can optionally be specified in a config file called
-``.bumpversion.cfg`` so that once you know how ``advbumpversion`` needs to be
+``.bumpversion.cfg`` so that once you know how ``bumpversion`` needs to be
 configured for one particular software package, you can run it without
 specifying options later. You should add that file to VCS so others can also
 bump versions.
@@ -88,7 +89,7 @@ Example ``.bumpversion.cfg``::
 
   [bumpversion:file:setup.py]
 
-If no ``.bumpversion.cfg`` exists, ``advbumpversion`` will also look into
+If no ``.bumpversion.cfg`` exists, ``bumpversion`` will also look into
 ``setup.cfg`` for configuration.
 
 Global configuration
@@ -101,7 +102,7 @@ General configuration is grouped in a ``[bumpversion]`` section.
 
   The current version of the software package before bumping.
 
-  Also available as ``--current-version`` (e.g. ``advbumpversion --current-version 0.5.1 patch setup.py``)
+  Also available as ``--current-version`` (e.g. ``bumpversion --current-version 0.5.1 patch setup.py``)
 
 ``new_version =``
   **no default value** (optional)
@@ -110,7 +111,7 @@ General configuration is grouped in a ``[bumpversion]`` section.
   automatically determined.
 
   Also available as ``--new-version`` (e.g. to go from 0.5.1 directly to
-  0.6.1: ``advbumpversion --current-version 0.5.1 --new-version 0.6.1 patch
+  0.6.1: ``bumpversion --current-version 0.5.1 --new-version 0.6.1 patch
   setup.py``).
 
 ``tag = (True | False)``
@@ -141,7 +142,7 @@ General configuration is grouped in a ``[bumpversion]`` section.
   the variables ``now`` or ``utcnow`` to get a current timestamp. Both accept
   datetime formatting (when used like as in ``{now:%d.%m.%Y}``).
 
-  Also available as ``--tag-name`` (e.g. ``advbumpversion --message 'Jenkins Build
+  Also available as ``--tag-name`` (e.g. ``bumpversion --message 'Jenkins Build
   {$BUILD_NUMBER}: {new_version}' patch``).
 
 ``commit = (True | False)``
@@ -163,7 +164,7 @@ General configuration is grouped in a ``[bumpversion]`` section.
   the variables ``now`` or ``utcnow`` to get a current timestamp. Both accept
   datetime formatting (when used like as in ``{now:%d.%m.%Y}``).
 
-  Also available as ``--message`` (e.g.: ``advbumpversion --message
+  Also available as ``--message`` (e.g.: ``bumpversion --message
   '[{now:%Y-%m-%d}] Jenkins Build {$BUILD_NUMBER}: {new_version}' patch``)
 
 
@@ -226,8 +227,8 @@ The following options are valid inside a part configuration:
       beta
       gamma
 
-  Here, ``advbumpversion release`` would bump ``1.alpha`` to ``1.beta``. Executing
-  ``advbumpversion release`` again would bump ``1.beta`` to ``1``, because
+  Here, ``bumpversion release`` would bump ``1.alpha`` to ``1.beta``. Executing
+  ``bumpversion release`` again would bump ``1.beta`` to ``1``, because
   `release` being ``gamma`` is configured optional.
 
 ``first_value =``
@@ -352,14 +353,14 @@ new version, before applying the change.
 
 The standard way to get it in a bash script is
 
-    advbumpversion --dry-run --list <part> | grep <field name> | sed -r s,"^.*=",,
+    bumpversion --dry-run --list <part> | grep <field name> | sed -r s,"^.*=",,
 
 where <part> is as usual the part of the version number you are updating. You need to specify
 `--dry-run` to avoid bumpversion actually bumping the version number.
 
 For example, if you are updating the minor number and looking for the new version number this becomes
 
-    advbumpversion --dry-run --list minor | grep new_version | sed -r s,"^.*=",,
+    bumpversion --dry-run --list minor | grep new_version | sed -r s,"^.*=",,
 
 Development
 ===========
@@ -377,9 +378,9 @@ Execute the following commands::
     git checkout master
     git pull
     make test
-    advbumpversion release
+    bumpversion release
     python setup.py sdist bdist_wheel upload
-    advbumpversion --no-tag patch
+    bumpversion --no-tag patch
     git push origin master --tags
 
 License
