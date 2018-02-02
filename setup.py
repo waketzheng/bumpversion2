@@ -11,7 +11,7 @@ long_description = re.sub(
 
 setup(
     name='advbumpversion',
-    version='0.5.7',
+    version='0.6.0-dev',
     url='https://github.com/c4urself/bump2version',
     author='Sebastien Andrivet',
     author_email='sebastien@andrivet.com',
@@ -23,6 +23,7 @@ setup(
         'console_scripts': [
             'bumpversion = bumpversion:main',
             'bump2version = bumpversion:main',
+            'advbumpversion = bumpversion:main',
         ]
     },
     classifiers=[

@@ -33,7 +33,7 @@ from bumpversion.version_part import VersionPart, NumericVersionPartConfiguratio
 if sys.version_info[0] == 2:
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 
-__VERSION__ = '0.5.7'
+__VERSION__ = '0.6.0-dev'
 
 DESCRIPTION = 'bumpversion: v{} (using Python v{})'.format(
     __VERSION__,
@@ -538,7 +538,7 @@ def main(original_args=None):
       sys.argv[1:] if original_args is None else original_args
     )
 
-    if positionals[0] not in ('major', 'minor', 'patch'):
+    if len(positionals) <= 0 or positionals[0] not in ('major', 'minor', 'patch'):
         print("ERROR: Must provide a valid version part: 'major', 'minor', or 'patch'")
         return 1
 
