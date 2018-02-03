@@ -1,3 +1,13 @@
+.. start-badges
+
+|travis|
+
+.. |travis| image:: https://travis-ci.org/andrivet/advbumpversion.svg?branch=master
+    :alt: Travis-CI Build Status
+    :target: https://travis-ci.org/andrivet/advbumpversion
+
+.. end-badges
+
 ==============
 advbumpversion
 ==============
@@ -14,7 +24,7 @@ author.
 Christian Verkerk has made some Pull Request merges and this project (renamed **bump2version**) can be found here: https://github.com/c4urself/bump2version.
 
 I have merged other Push Requests, in particular the ability to have more than one rule for a file, in a new project **advbumpversion**.
-Look at :ref:`CHANGELOG <changelog>` to see all the changes.
+Look at `CHANGELOG <changelog>`_ to see all the changes.
 
 Note: For compatibility, this project declares ``advbumpversion``, ``bump2version`` and ``bumpversion``. The remaining of this document uses ``bumpversion`` in command-line examples.
 
