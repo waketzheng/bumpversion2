@@ -1,21 +1,33 @@
 .. start-badges
 
-|travis|
+|travis| |requires| |wheel| |supported-versions| |supported-implementations|
 
 .. |travis| image:: https://travis-ci.org/andrivet/advbumpversion.svg?branch=master
     :alt: Travis-CI Build Status
     :target: https://travis-ci.org/andrivet/advbumpversion
 
+.. |requires| image:: https://requires.io/github/andrivet/advbumpversion/requirements.svg?branch=master
+    :target: https://requires.io/github/andrivet/advbumpversion/requirements/?branch=master
+    :alt: Requirements Status
+
+.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/asn1.svg?style=flat
+    :alt: Supported versions
+    :target: https://pypi.python.org/pypi/asn1
+
+.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/asn1.svg?style=flat
+    :alt: Supported implementations
+    :target: https://pypi.python.org/pypi/asn1
+
 .. end-badges
 
 ==============
-advbumpversion
+ADVbumpversion
 ==============
 
 Fork
 ====
 
-This is a fork (**advbumpversion**) of a fork (**bump2version**).
+This is a fork (**ADVbumpversion**) of a fork (**bump2version**).
 
 The excellent original project that can be found here: https://github.com/peritus/bumpversion.
 Unfortunately it seems like development has been stuck for some time and no activity has been seen from the
@@ -23,7 +35,7 @@ author.
 
 Christian Verkerk has made some Pull Request merges and this project (renamed **bump2version**) can be found here: https://github.com/c4urself/bump2version.
 
-I have merged other Push Requests, in particular the ability to have more than one rule for a file, in a new project **advbumpversion**.
+I have merged other Push Requests, in particular the ability to have more than one rule for a file, in a new project **ADVbumpversion**.
 Look at ``CHANGELOG.rst`` to see all the changes.
 
 Note: For compatibility, this project declares ``advbumpversion``, ``bump2version`` and ``bumpversion``. The remaining of this document uses ``bumpversion`` in command-line examples.
@@ -295,7 +307,7 @@ File specific configuration
   Template string how to search for the string to be replaced in the file.
   Useful if the remotest possibility exists that the current version number
   might be multiple times in the file and you mean to only bump one of the
-  occurences. Can be multiple lines, templated using `Python Format String Syntax
+  occurrences. Can be multiple lines, templated using `Python Format String Syntax
   <http://docs.python.org/2/library/string.html#format-string-syntax>`_.
 
 ``replace =``
@@ -396,4 +408,4 @@ Execute the following commands::
 License
 =======
 
-advbumpversion is licensed under the MIT License - see the LICENSE.rst file for details
+**ADVbumpversion** is licensed under the MIT License - see the LICENSE.rst file for details

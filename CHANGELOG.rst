@@ -3,6 +3,11 @@
 Changes
 =======
 
+**v1.1.0**
+
+- Compatibility with Travis CI
+- Publish on PyPi
+
 **v1.0.0**
 
 Fork of fork. The project is renamed **advbumpversion** to avoid confusion with other forks.
