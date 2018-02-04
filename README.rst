@@ -10,13 +10,17 @@
     :target: https://requires.io/github/andrivet/advbumpversion/requirements/?branch=master
     :alt: Requirements Status
 
-.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/asn1.svg?style=flat
-    :alt: Supported versions
-    :target: https://pypi.python.org/pypi/asn1
+.. |wheel| image:: https://img.shields.io/pypi/wheel/advbumpversion.svg?style=flat
+    :alt: PyPI Wheel
+    :target: https://pypi.python.org/pypi/advbumpversion
 
-.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/asn1.svg?style=flat
+.. |supported-versions| image:: https://img.shields.io/pypi/pyversions/advbumpversion.svg?style=flat
+    :alt: Supported versions
+    :target: https://pypi.python.org/pypi/advbumpversion
+
+.. |supported-implementations| image:: https://img.shields.io/pypi/implementation/advbumpversion.svg?style=flat
     :alt: Supported implementations
-    :target: https://pypi.python.org/pypi/asn1
+    :target: https://pypi.python.org/pypi/advbumpversion
 
 .. end-badges
 
