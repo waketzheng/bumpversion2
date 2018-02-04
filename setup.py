@@ -25,7 +25,7 @@ long_description = '%s\n%s' % (
 
 setup(
     name='advbumpversion',
-    version='1.0.1',
+    version='1.0.2',
     url='https://github.com/andrivet/advbumpversion',
     packages=find_packages('.'),
     author='Sebastien Andrivet',

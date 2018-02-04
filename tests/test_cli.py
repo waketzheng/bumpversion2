@@ -125,10 +125,10 @@ optional arguments:
                         v{new_version})
   --tag-message TAG_MESSAGE
                         Tag message (default: Bump version: {current_version}
-                        → {new_version})
+                        -> {new_version})
   --message COMMIT_MSG, -m COMMIT_MSG
                         Commit message (default: Bump version:
-                        {current_version} → {new_version})
+                        {current_version} -> {new_version})
 """ % DESCRIPTION).lstrip()
 
 
@@ -433,7 +433,7 @@ def test_commit_and_tag(tmpdir, vcs):
 
     assert '-47.1.1' in log
     assert '+47.1.2' in log
-    assert 'Bump version: 47.1.1 → 47.1.2' in log
+    assert 'Bump version: 47.1.1 -> 47.1.2' in log
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
 
@@ -469,7 +469,7 @@ def test_commit_and_tag_with_configfile(tmpdir, vcs):
 
     assert '-48.1.1' in log
     assert '+48.1.2' in log
-    assert 'Bump version: 48.1.1 → 48.1.2' in log
+    assert 'Bump version: 48.1.1 -> 48.1.2' in log
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
 
@@ -510,7 +510,7 @@ def test_commit_and_not_tag_with_configfile(tmpdir, vcs, config):
 
     assert '-48.1.1' in log
     assert '+48.1.2' in log
-    assert 'Bump version: 48.1.1 → 48.1.2' in log
+    assert 'Bump version: 48.1.1 -> 48.1.2' in log
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
 
@@ -1174,8 +1174,8 @@ def test_subjunctive_dry_run_logging(tmpdir, vcs):
         info|Would prepare Git commit|
         info|Would add changes in file 'dont_touch_me.txt' to Git|
         info|Would add changes in file '.bumpversion.cfg' to Git|
-        info|Would commit to Git with message 'Bump version: 0.8 \u2192 0.8.1'|
-        info|Would tag 'v0.8.1' with message 'Bump version: 0.8 \u2192 0.8.1' in Git and not signing|
+        info|Would commit to Git with message 'Bump version: 0.8 -> 0.8.1'|
+        info|Would tag 'v0.8.1' with message 'Bump version: 0.8 -> 0.8.1' in Git and not signing|
         """).strip()
 
     if vcs == "hg":

@@ -35,7 +35,7 @@ from bumpversion.version_part import VersionPart, NumericVersionPartConfiguratio
 if sys.version_info[0] == 2:
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 
-__VERSION__ = '1.0.1'
+__VERSION__ = '1.0.2'
 
 DESCRIPTION = 'bumpversion: v{} (using Python v{})'.format(
     __VERSION__,
@@ -637,7 +637,10 @@ def main(original_args=None):
         logger.info("Reading config file {}:".format(config_file))
         logger.info(io.open(config_file, 'rt', encoding='utf-8').read())
 
-        config.read_file(io.open(config_file, 'rt', encoding='utf-8'))
+        try:
+            config.read_file(io.open(config_file, 'rt', encoding='utf-8'))
+        except AttributeError:
+            config.readfp(io.open(config_file, 'rt', encoding='utf-8'))
 
         log_config = StringIO()
         config.write(log_config)
@@ -816,11 +819,11 @@ def main(original_args=None):
 
     parser3.add_argument('--tag-message', metavar='TAG_MESSAGE', dest='tag_message',
                          help='Tag message', default=defaults.get('tag_message',
-                                                                  'Bump version: {current_version} → {new_version}'))
+                                                                  'Bump version: {current_version} -> {new_version}'))
 
     parser3.add_argument('--message', '-m', metavar='COMMIT_MSG',
                          help='Commit message',
-                         default=defaults.get('message', 'Bump version: {current_version} → {new_version}'))
+                         default=defaults.get('message', 'Bump version: {current_version} -> {new_version}'))
 
     file_names = []
     if 'files' in defaults:

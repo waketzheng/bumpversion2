@@ -24,7 +24,7 @@ author.
 Christian Verkerk has made some Pull Request merges and this project (renamed **bump2version**) can be found here: https://github.com/c4urself/bump2version.
 
 I have merged other Push Requests, in particular the ability to have more than one rule for a file, in a new project **advbumpversion**.
-Look at `CHANGELOG <changelog>`_ to see all the changes.
+Look at ``CHANGELOG.rst`` to see all the changes.
 
 Note: For compatibility, this project declares ``advbumpversion``, ``bump2version`` and ``bumpversion``. The remaining of this document uses ``bumpversion`` in command-line examples.
 
@@ -163,7 +163,7 @@ General configuration is grouped in a ``[bumpversion]`` section.
   Also available as ``(--commit | --no-commit)``.
 
 ``message =``
-  **default:** ``Bump version: {current_version} → {new_version}``
+  **default:** ``Bump version: {current_version} -> {new_version}``
 
   The commit message to use when creating a commit. Only valid when using ``--commit`` / ``commit = True``.
 
