@@ -35,7 +35,7 @@ from bumpversion.version_part import VersionPart, NumericVersionPartConfiguratio
 if sys.version_info[0] == 2:
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 
-__VERSION__ = '1.1.0'
+__VERSION__ = '1.1.1'
 
 DESCRIPTION = 'bumpversion: v{} (using Python v{})'.format(
     __VERSION__,
@@ -669,12 +669,12 @@ def main(original_args=None):
 
         for section_name in config.sections():
 
-            section_name_match = re.compile("^bumpversion:(file|part).*?:(.+)").match(section_name)
+            section_name_match = re.compile("^bumpversion:(file|part):([^:]+)(?::(.+))?").match(section_name)
 
             if not section_name_match:
                 continue
 
-            section_prefix, section_value = section_name_match.groups()
+            section_prefix, section_value, section_number = section_name_match.groups()
 
             section_config = dict(config.items(section_name))
 

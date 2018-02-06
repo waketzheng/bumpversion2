@@ -59,6 +59,14 @@ commits and tags:
 - just handles text files, so it's not specific to any programming language
 
 
+Installation
+============
+
+You can download and install the latest version of this software from the Python package index (PyPI) as follows::
+
+    pip install --upgrade advbumpversion
+
+
 Usage
 =====
 
@@ -265,7 +273,10 @@ The following options are valid inside a part configuration:
 File specific configuration
 ---------------------------
 
-``[bumpversion:file:…]``
+``[bumpversion:file:…:…]``
+
+**Note**: If you want to specify different options (``parse``, ...) for the same file, you can have several sections for the same file.
+To distinguish these sections, append ``:`` and an identifier (its value has no importance) after the file name.
 
 ``parse =``
   **default:** ``(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)``

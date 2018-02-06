@@ -1528,6 +1528,7 @@ def test_multi_file_configuration2(tmpdir, capsys):
     assert '1.7.1+bob+38945' in tmpdir.join("BUILDNUMBER").read()
 
 
+
 def test_search_replace_to_avoid_updating_unconcerned_lines(tmpdir, capsys):
     tmpdir.chdir()
 
@@ -1958,3 +1959,30 @@ class TestSplitArgsInOptionalAndPositional:
 
         assert positional == ['minor', 'setup.py']
         assert optional == ['--allow-dirty', '-m', '"Commit"']
+
+
+def test_one_file_multi_sections_configuration(tmpdir, capsys):
+
+    tmpdir.join("VERSION.txt").write(dedent("""
+        1#0#3
+        1-0-3
+        """))
+
+    tmpdir.chdir()
+
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version = 1.0.3
+
+        [bumpversion:file:VERSION.txt:0]
+        serialize = {major}#{minor}#{patch}
+
+        [bumpversion:file:VERSION.txt:1]
+        serialize = {major}-{minor}-{patch}
+        """))
+
+    main(['major'])
+    assert dedent("""
+    2#0#0
+    2-0-0
+    """) in tmpdir.join("VERSION.txt").read()

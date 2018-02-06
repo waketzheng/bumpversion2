@@ -3,6 +3,10 @@
 Changes
 =======
 
+**v1.1.1**
+
+- Fix a bug with PR#117: allow multiple config sections per file. Add a test case.
+
 **v1.1.0**
 
 - Compatibility with Travis CI
