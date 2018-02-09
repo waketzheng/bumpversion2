@@ -54,7 +54,7 @@ class ValuesFunction(object):
     you get a ValueError exception.
     """
 
-    def __init__(self, values, optional_value=None, first_value=None):
+    def __init__(self, values, optional_value=None, first_value=None, independent=False):
 
         if len(values) == 0:
             raise ValueError("Version part values cannot be empty")
@@ -78,6 +78,7 @@ class ValuesFunction(object):
                 first_value, values))
 
         self.first_value = first_value
+        self.independent = independent
 
     def bump(self, value):
         try:
