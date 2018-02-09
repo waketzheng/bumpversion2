@@ -17,7 +17,7 @@ class NumericFunction(object):
 
     FIRST_NUMERIC = re.compile('([^\d]*)(\d+)(.*)')
 
-    def __init__(self, first_value=None):
+    def __init__(self, first_value=None, independent=False):
 
         if first_value is not None:
             try:
@@ -30,6 +30,7 @@ class NumericFunction(object):
 
         self.first_value = str(first_value)
         self.optional_value = self.first_value
+        self.independent = independent
 
     def bump(self, value):
         part_prefix, part_numeric, part_suffix = self.FIRST_NUMERIC.search(

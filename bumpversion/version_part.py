@@ -15,6 +15,10 @@ class PartConfiguration(object):
     def optional_value(self):
         return str(self.function.optional_value)
 
+    @property
+    def independent(self):
+        return self.function.independent
+
     def bump(self, value=None):
         return self.function.bump(value)
 
@@ -54,6 +58,9 @@ class VersionPart(object):
 
     def is_optional(self):
         return self.value == self.config.optional_value
+
+    def is_independent(self):
+        return self.config.independent
 
     def __format__(self, format_spec):
         return self.value

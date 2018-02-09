@@ -352,7 +352,7 @@ class Version(object):
             elif label == part_name:
                 new_values[label] = self._values[label].bump()
                 bumped = True
-            elif bumped:
+            elif bumped and not self._values[label].is_independent():
                 new_values[label] = self._values[label].null()
             else:
                 new_values[label] = self._values[label].copy()
