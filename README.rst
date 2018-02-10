@@ -28,8 +28,8 @@
 ADVbumpversion
 ==============
 
-Fork
-====
+This Fork
+=========
 
 This is a fork (**ADVbumpversion**) of a fork (**bump2version**).
 
@@ -39,10 +39,24 @@ author.
 
 Christian Verkerk has made some Pull Request merges and this project (renamed **bump2version**) can be found here: https://github.com/c4urself/bump2version.
 
-I have merged other Push Requests, in particular the ability to have more than one rule for a file, in a new project **ADVbumpversion**.
+I have merged other Push Requests, in particular the ability to have more than one rule for a file,
+in a new project **ADVbumpversion**. The major differences are:
+
+- It is possible to have more than one set of rules (``parse``, ``serialize``, ``search`` and ``replace``) for the
+same file
+
+- Some parts of the version can be independent of the others: They are not incremented with the other parts. It is in
+particular useful when you have a build number that is incremented independently of the version
+
+- Several examples of usage
+
+- More testing cases
+
 Look at ``CHANGELOG.rst`` to see all the changes.
 
-Note: For compatibility, this project declares ``advbumpversion``, ``bump2version`` and ``bumpversion``. The remaining of this document uses ``bumpversion`` in command-line examples.
+**Note**: For compatibility, this project declares ``advbumpversion``, ``bump2version`` and ``bumpversion``. They are
+identical. The remaining of this document uses ``bumpversion`` in command-line examples.
+
 
 Introduction
 ============
@@ -70,6 +84,8 @@ You can download and install the latest version of this software from the Python
 Usage
 =====
 
+**Note**: I have compiled several usage examples in ``EXAMPLES.rst``.
+
 There are two modes of operation: On the command line for single-file operation
 and using a `configuration file <#configuration>`_ for more complex multi-file
 operations.
@@ -84,7 +100,7 @@ operations.
 
   Valid values include those given in the ``--serialize`` / ``--parse`` option.
 
-  Example `bumping 0.5.1 to 0.6.0`::
+  Example bumping ``0.5.1`` to ``0.6.0``::
 
      bumpversion --current-version 0.5.1 minor src/VERSION
 
@@ -97,7 +113,7 @@ operations.
   configuration file will be used. If no files are mentioned on the
   configuration file either, are no files will be modified.
 
-  Example `bumping 1.1.9 to 2.0.0`::
+  Example bumping ``1.1.9`` to ``2.0.0``::
 
      bumpversion --current-version 1.1.9 major setup.py
 
@@ -178,6 +194,20 @@ General configuration is grouped in a ``[bumpversion]`` section.
 
   Also available as ``--tag-name`` (e.g. ``bumpversion --message 'Jenkins Build
   {$BUILD_NUMBER}: {new_version}' patch``).
+
+``tag_message =``
+  **default:** ``Bump version: {current_version} -> {new_version}``
+
+  The annotation of the tag that will be created. Only valid when using ``--tag`` / ``tag = True``.
+
+  This is templated using the `Python Format String Syntax
+  <http://docs.python.org/2/library/string.html#format-string-syntax>`_.
+  Available in the template context are ``current_version`` and ``new_version``
+  as well as all environment variables (prefixed with ``$``). You can also use
+  the variables ``now`` or ``utcnow`` to get a current timestamp. Both accept
+  datetime formatting (when used like as in ``{now:%d.%m.%Y}``).
+
+  Also available as ``--tag-message``.
 
 ``commit = (True | False)``
   **default:** ``False`` (`Don't create a commit`)
@@ -270,13 +300,26 @@ The following options are valid inside a part configuration:
 
   When the part is reset, the value will be set to the value specified here.
 
+``independent = ``
+  **default**: False
+
+  When this value is set to True, the part is not reset when other parts are incremented. Its incrementation is
+  independent of the other parts. It is in particular useful when you have a build number in your version that is
+  incremented independently of the actual version.
+
 File specific configuration
 ---------------------------
 
 ``[bumpversion:file:…:…]``
 
 **Note**: If you want to specify different options (``parse``, ...) for the same file, you can have several sections for the same file.
-To distinguish these sections, append ``:`` and an identifier (its value has no importance) after the file name.
+To distinguish these sections, append ``:`` and an identifier (its value has no importance) after the file name::
+
+    [bumpversion:file.txt:0]
+    parse = ...
+
+    [bumpversion:file.txt:1]
+    parse = ...
 
 ``parse =``
   **default:** ``(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)``

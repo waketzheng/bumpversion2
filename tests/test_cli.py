@@ -12,6 +12,7 @@ from shlex import split as shlex_split
 from textwrap import dedent
 from functools import partial
 import warnings
+import datetime
 
 import bumpversion
 
@@ -793,6 +794,42 @@ def test_annotated_tag(tmpdir, vcs):
         raise ValueError("Unknown VCS")
 
 
+@pytest.mark.parametrize("vcs", [xfail_if_no_git("git"), xfail_if_no_hg("hg")])
+def test_annotated_tag_config(tmpdir, vcs):
+    tmpdir.chdir()
+    check_call([vcs, "init"])
+    tmpdir.join("VERSION").write("42.4.1")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "commit", "-m", "initial commit"])
+
+    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+current_version: 42.4.1
+commit: True
+tag: True
+tag_message: test {new_version}-tag
+files: VERSION
+""")
+
+    main(['patch'])
+    assert '42.4.2' == tmpdir.join("VERSION").read()
+
+    tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
+    assert b'v42.4.2' in tag_out
+
+    if vcs == "git":
+        describe_out = subprocess.check_output([vcs, "describe"])
+        assert describe_out == b'v42.4.2\n'
+
+        describe_out = subprocess.check_output([vcs, "show", "v42.4.2"])
+        assert describe_out.startswith(b"tag v42.4.2\n")
+        assert b'test 42.4.2-tag' in describe_out
+    elif vcs == "hg":
+        describe_out = subprocess.check_output([vcs, "log"])
+        assert b'test 42.4.2-tag' in describe_out
+    else:
+        raise ValueError("Unknown VCS")
+
+
 @pytest.mark.parametrize("vcs", [xfail_if_no_git("git")])
 def test_vcs_describe(tmpdir, vcs):
     tmpdir.chdir()
@@ -1528,7 +1565,6 @@ def test_multi_file_configuration2(tmpdir, capsys):
     assert '1.7.1+bob+38945' in tmpdir.join("BUILDNUMBER").read()
 
 
-
 def test_search_replace_to_avoid_updating_unconcerned_lines(tmpdir, capsys):
     tmpdir.chdir()
 
@@ -1986,3 +2022,468 @@ def test_one_file_multi_sections_configuration(tmpdir, capsys):
     2#0#0
     2-0-0
     """) in tmpdir.join("VERSION.txt").read()
+
+
+def test_replace_build_date_configuration(tmpdir, capsys):
+    tmpdir.join("VERSION.h").write(dedent("""
+
+        #define BUILD_VERSION 2.1.0
+        #define BUILD_DATE 2017-12-04 12:00
+        #define BUILD_DESCRIPTION 2.1.0 (2017-12-04 12:00)
+
+        """))
+
+    tmpdir.chdir()
+
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version = 2.1.0 2017-12-04
+        serialize = {major}.{minor}.{patch} {now:%Y-%m-%d}
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\s(?P<date>\d{4}-\d{2}-\d{2})
+
+        [bumpversion:file:VERSION.h:0]
+        serialize = {major}.{minor}.{patch}
+
+        [bumpversion:file:VERSION.h:1]
+        serialize = {date}
+        """))
+
+    now = datetime.datetime.now()
+    main(['minor', '--verbose'])
+
+    expected = dedent("""
+
+    #define BUILD_VERSION 2.2.0
+    #define BUILD_DATE XXXX 12:00
+    #define BUILD_DESCRIPTION 2.2.0 (XXXX 12:00)
+
+    """).replace("XXXX", "{:04}-{:02}-{:02}".format(now.year, now.month, now.day))
+
+    assert expected in tmpdir.join("VERSION.h").read()
+
+
+def test_build_number_configuration(tmpdir, capsys):
+    tmpdir.join("VERSION.txt").write("2.1.6-5123")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 2.1.6-5123
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\-(?P<build>\d+)
+        serialize = {major}.{minor}.{patch}-{build}
+
+        [bumpversion:file:VERSION.txt]
+
+        [bumpversion:part:build]
+        independent = True
+        """))
+
+    main(['build'])
+    assert '2.1.6-5124' == tmpdir.join("VERSION.txt").read()
+
+    main(['major'])
+    assert '3.0.0-5124' == tmpdir.join("VERSION.txt").read()
+
+    main(['build'])
+    assert '3.0.0-5125' == tmpdir.join("VERSION.txt").read()
+
+
+def test_example_1(tmpdir, capsys):
+    tmpdir.join("VERSION").write("1.2.0")
+    tmpdir.chdir()
+    main(['patch', '--current-version', '1.2.0', 'VERSION'])
+    assert '1.2.1' == tmpdir.join("VERSION").read()
+
+
+def test_example_2(tmpdir, capsys):
+    tmpdir.join("VERSION").write("1.2.0")
+    tmpdir.chdir()
+    tmpdir.join("mybumpconfig.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 1.2.0
+        files: VERSION
+        """))
+    main(['patch', '--config-file', 'mybumpconfig.cfg'])
+    assert '1.2.1' == tmpdir.join("VERSION").read()
+
+
+def test_example_3(tmpdir, capsys):
+    tmpdir.join("VERSION").write("1.2.0")
+    tmpdir.chdir()
+    tmpdir.join("mybumpconfig.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 1.2.0
+        
+        [bumpversion:file:VERSION]
+        """))
+    main(['patch', '--config-file', 'mybumpconfig.cfg'])
+    assert '1.2.1' == tmpdir.join("VERSION").read()
+
+
+def test_example_4(tmpdir, capsys):
+    tmpdir.join("VERSION").write("1.2.0")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 1.2.0
+
+        [bumpversion:file:VERSION]
+        """))
+    main(['patch'])
+    assert '1.2.1' == tmpdir.join("VERSION").read()
+
+
+def test_example_5(tmpdir, capsys):
+    tmpdir.join("VERSION").write("2.1.0-5123")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 2.1.0-5123
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\-(?P<build>\d+)
+        serialize = {major}.{minor}.{patch}-{build}
+    
+        [bumpversion:file:VERSION]
+        """))
+
+    main(['build'])
+    assert '2.1.0-5124' == tmpdir.join("VERSION").read()
+
+    main(['major'])
+    assert '3.0.0-0' == tmpdir.join("VERSION").read()
+
+
+def test_example_6(tmpdir, capsys):
+    tmpdir.join("VERSION").write("2.1.0-5123")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 2.1.0-5123
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\-(?P<build>\d+)
+        serialize = {major}.{minor}.{patch}-{build}
+
+        [bumpversion:file:VERSION]
+        
+        [bumpversion:part:build]
+        independent = True
+        """))
+
+    main(['build'])
+    assert '2.1.0-5124' == tmpdir.join("VERSION").read()
+
+    main(['major'])
+    assert '3.0.0-5124' == tmpdir.join("VERSION").read()
+
+
+def test_example_7(tmpdir, capsys):
+    tmpdir.join("VERSION.txt").write("2.1.0-alpha")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 2.1.0-alpha
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\-(?P<release>[a-z]+)
+        serialize = {major}.{minor}.{patch}-{release}
+    
+        [bumpversion:file:VERSION.txt]
+    
+        [bumpversion:part:release]
+        values =
+            alpha
+            beta
+            gamma
+        """))
+
+    main(['release'])
+    assert '2.1.0-beta' == tmpdir.join("VERSION.txt").read()
+
+
+def test_example_8(tmpdir, capsys):
+    tmpdir.join("VERSION.txt").write("2.1.0-alpha")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 2.1.0-alpha
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)(\-(?P<release>[a-z]+))?
+        serialize =
+            {major}.{minor}.{patch}-{release}
+            {major}.{minor}.{patch}
+    
+        [bumpversion:file:VERSION.txt]
+    
+        [bumpversion:part:release]
+        optional_value = gamma
+        values =
+            alpha
+            beta
+            gamma
+        """))
+
+    main(['release'])
+    assert '2.1.0-beta' == tmpdir.join("VERSION.txt").read()
+
+    main(['release'])
+    assert '2.1.0' == tmpdir.join("VERSION.txt").read()
+
+
+def test_example_9(tmpdir, capsys):
+    tmpdir.join("VERSION.txt").write("1.0a1")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version = 1.0a1
+    
+        parse =
+            (?P<major>\d+)\.(?P<minor>\d+)              # major and minor
+            (?:(?P<pre>(?:[ab]|rc))(?P<prenum>\d+))?    # 'a' = alpha, 'b' = beta, 'rc' = release candidate
+            (?:\.post(?P<post>\d+))?                    # post-release
+            (?:\.dev(?P<dev>\d+))?                      # development
+    
+        serialize =
+            {major}.{minor}{pre}{prenum}.post{post}.dev{dev}
+            {major}.{minor}.post{post}.dev{dev}
+            {major}.{minor}{pre}{prenum}.post{post}
+            {major}.{minor}.post{post}
+            {major}.{minor}{pre}{prenum}.dev{dev}
+            {major}.{minor}.dev{dev}
+            {major}.{minor}{pre}{prenum}
+            {major}.{minor}
+    
+        [bumpversion:part:pre]
+        optional_value = stable
+        values =
+            a
+            b
+            rc
+            stable
+        
+        [bumpversion:part:prenum]
+        first_value = 1
+          
+        [bumpversion:file:VERSION.txt]
+        """))
+
+    main(['prenum'])
+    assert '1.0a2' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0b1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0rc1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0' == tmpdir.join("VERSION.txt").read()
+
+    main(['post'])
+    assert '1.0.post1' == tmpdir.join("VERSION.txt").read()
+
+    main(['dev'])
+    assert '1.0.post1.dev1' == tmpdir.join("VERSION.txt").read()
+
+    main(['minor'])
+    assert '1.1a1' == tmpdir.join("VERSION.txt").read()
+
+    main(['dev'])
+    assert '1.1a1.dev1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.1b1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.1rc1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.1' == tmpdir.join("VERSION.txt").read()
+
+    main(['dev'])
+    assert '1.1.dev1' == tmpdir.join("VERSION.txt").read()
+
+
+def test_example_10(tmpdir, capsys):
+    tmpdir.join("VERSION.txt").write("1.0.0")
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version = 1.0.0
+    
+        parse =
+            (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)              # major, minor and patch
+            (?:\-(?P<pre>(?:dev|alpha|beta|rc))\.(?P<prenum>\d+))?      # pre-release
+            (?:\+(?P<build>\d+))?                                       # build metadata
+    
+        serialize =
+            {major}.{minor}.{patch}-{pre}.{prenum}+{build}
+            {major}.{minor}.{patch}-{pre}.{prenum}
+            {major}.{minor}.{patch}+{build}
+            {major}.{minor}.{patch}
+    
+        [bumpversion:part:pre]
+        optional_value = stable
+        values =
+            dev
+            alpha
+            beta
+            rc
+            stable
+        
+        [bumpversion:part:prenum]
+        first_value = 1
+        
+        [bumpversion:part:build]
+        independent = True
+    
+        [bumpversion:file:VERSION.txt]
+        """))
+
+    main(['patch'])
+    assert '1.0.1-dev.1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.1-alpha.1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.1-beta.1' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.1-rc.1' == tmpdir.join("VERSION.txt").read()
+
+    main(['prenum'])
+    assert '1.0.1-rc.2' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.1' == tmpdir.join("VERSION.txt").read()
+
+    main(['build'])
+    assert '1.0.1+1' == tmpdir.join("VERSION.txt").read()
+
+    main(['build'])
+    assert '1.0.1+2' == tmpdir.join("VERSION.txt").read()
+
+    main(['build', '--new-version', '1.0.1+5134'])
+    assert '1.0.1+5134' == tmpdir.join("VERSION.txt").read()
+
+    main(['patch'])
+    assert '1.0.2-dev.1+5134' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.2-alpha.1+5134' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.2-beta.1+5134' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.2-rc.1+5134' == tmpdir.join("VERSION.txt").read()
+
+    main(['pre'])
+    assert '1.0.2+5134' == tmpdir.join("VERSION.txt").read()
+
+
+def test_example_11a(tmpdir, capsys):
+    tmpdir.join("VERSION").write(dedent("""
+        VERSION = 1.2.0
+        ANOTHER_COMPONENT = 1.2.0
+        """))
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 1.2.0
+    
+        [bumpversion:file:VERSION]
+        search = VERSION = {current_version}
+        replace = VERSION = {new_version}
+        """))
+
+    main(['minor'])
+    assert dedent("""
+        VERSION = 1.3.0
+        ANOTHER_COMPONENT = 1.2.0
+        """) == tmpdir.join("VERSION").read()
+
+
+def test_example_11b(tmpdir, capsys):
+    tmpdir.join("CHANGELOG.rst").write(dedent("""
+        Unreleased
+        ----------
+        Version v1.2.0 (2018-01-01)
+        ---------------------------
+        
+        - New features
+        """))
+
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 1.2.0
+        
+        [bumpversion:file:CHANGELOG.rst]
+        search = 
+            Unreleased
+            ----------
+        replace = 
+            Unreleased
+            ----------
+            Version v{new_version} ({now:%Y-%m-%d})
+            ---------------------------
+        """))
+
+    now = datetime.datetime.now()
+    main(['minor'])
+
+    expcted = dedent("""
+        Unreleased
+        ----------
+        Version v1.3.0 (XXXX)
+        ---------------------------
+        Version v1.2.0 (2018-01-01)
+        ---------------------------
+    
+        - New features
+        """).replace("XXXX", "{:04}-{:02}-{:02}".format(now.year, now.month, now.day))
+
+    assert expcted == tmpdir.join("CHANGELOG.rst").read()
+
+
+def test_example_12(tmpdir, capsys):
+    tmpdir.join("VERSION.txt").write('1.2.0+britney')
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version: 1.2.0
+        
+        [bumpversion:file:VERSION.txt]
+        serialize =
+            {major}.{minor}.{patch}+{$USER}
+        """))
+
+    environ['USER'] = "britney"
+    main(['major'])
+    del environ['USER']
+    assert '2.0.0+britney' == tmpdir.join("VERSION.txt").read()
+
+
+def test_example_13(tmpdir, capsys):
+    tmpdir.join("VERSION.h").write(dedent("""
+        #define BUILD_VERSION 2.1.0
+        #define BUILD_DATE 2017-12-04 12:00
+        #define BUILD_DESCRIPTION 2.1.0 (2017-12-04 12:00)
+        """))
+    tmpdir.chdir()
+    tmpdir.join(".bumpversion.cfg").write(dedent("""
+        [bumpversion]
+        current_version = 2.1.0 2017-12-04
+        serialize = {major}.{minor}.{patch} {now:%Y-%m-%d}
+        parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\s(?P<date>\d{4}-\d{2}-\d{2})
+    
+        [bumpversion:file:VERSION.h:0]
+        serialize = {major}.{minor}.{patch}
+    
+        [bumpversion:file:VERSION.h:1]
+        serialize = {date}
+        """))
+
+    now = datetime.datetime.now()
+    main(['minor'])
+    assert dedent("""
+        #define BUILD_VERSION 2.2.0
+        #define BUILD_DATE XXXX 12:00
+        #define BUILD_DESCRIPTION 2.2.0 (XXXX 12:00)
+        """).replace("XXXX", "{:04}-{:02}-{:02}".format(now.year, now.month, now.day)) \
+           == tmpdir.join("VERSION.h").read()

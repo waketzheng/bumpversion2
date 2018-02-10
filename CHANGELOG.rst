@@ -3,6 +3,14 @@
 Changes
 =======
 
+**v1.2.0**
+
+- Add ``independent`` flag for version parts. This part is not reset when other parts are incremented. For example, for
+  build numbers
+- Add EXAMPLES.rst with several test cases
+- Add new test cases: update version and build date, build number, annotated tags, test cases for almost all cases in
+  EXAMPLES.rst
+
 **v1.1.1**
 
 - Fix a bug with PR#117: allow multiple config sections per file. Add a test case.
