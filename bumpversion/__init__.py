@@ -35,7 +35,7 @@ from bumpversion.version_part import VersionPart, NumericVersionPartConfiguratio
 if sys.version_info[0] == 2:
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
 
-__VERSION__ = '1.2.0-dev'
+__VERSION__ = '1.2.0'
 
 DESCRIPTION = 'bumpversion: v{} (using Python v{})'.format(
     __VERSION__,
