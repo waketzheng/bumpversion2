@@ -96,7 +96,7 @@ EXPECTED_OPTIONS = """
 [--tag-message TAG_MESSAGE]
 [--message COMMIT_MSG]
 part
-[file [file ...]]
+[file ...]
 """.strip().splitlines()
 
 EXPECTED_USAGE = (r"""
@@ -215,7 +215,7 @@ new_version: 19
     assert "New version that should be in the files (default: 19)" in out
     assert "[--current-version VERSION]" in out
     assert "[--new-version VERSION]" in out
-    assert "[file [file ...]]" in out
+    assert "[file ...]" in out
 
 
 def test_missing_explicit_config_file(tmpdir):
@@ -2509,7 +2509,7 @@ def test_example_13(tmpdir, capsys):
 def test_independent_falsy_value_in_config_does_not_bump_independently(tmpdir, capsys):
     tmpdir.join("VERSION").write("2.1.0-5123")
     tmpdir.chdir()
-    tmpdir.join(".bumpversion.cfg").write(dedent("""
+    tmpdir.join(".bumpversion.cfg").write(dedent(r"""
         [bumpversion]
         current_version: 2.1.0-5123
         parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)\-(?P<build>\d+)
