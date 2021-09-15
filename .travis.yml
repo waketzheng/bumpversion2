@@ -1,16 +1,19 @@
 language: python
 
 python:
-    - "2.7"
-    - "3.3"
-    - "3.4"
     - "3.5"
     - "3.6"
+    - "3.7"
+    - "3.8"
+    - "3.9"
+    - "pypy3"
+
 sudo: false
 before_install:
   - python --version
   - uname -a
   - lsb_release -a
+
 install:
   - git config --global user.email "bumpversion-test-git@travis.ci"
   - git config --global user.name "Testing Git on Travis CI"
@@ -19,7 +22,6 @@ install:
   - echo -e '[ui]\nusername = Testing Mercurial on Travis CI <bumpversion-test-hg@travis.ci>' > ~/.hgrc
   - hg --version
   - pip install --upgrade pytest tox tox-travis
+
 script:
   - tox -v
-
-
