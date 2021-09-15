@@ -3,6 +3,14 @@
 Changes
 =======
 
+**v1.3.0**
+
+- Drop support of Python 2.7, 3.3 and 3.4
+- Add support of Python 3.7, 3.8 and 3.9
+- Merge PR#7: Explicitly parse 'independent' config as boolean
+- Merge PR#9: Fix + clean up local testing
+- Merge PR#10: Prettify expected exceptions
+
 **v1.2.0**
 
 - Add ``independent`` flag for version parts. This part is not reset when other parts are incremented. For example, for

@@ -1,4 +1,4 @@
-Copyright (C) 2018 Sebastien Andrivet
+Copyright (C) 2018-2021 Sebastien Andrivet
 Copyright (C) 2013-2014 Filip Noetzel
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
