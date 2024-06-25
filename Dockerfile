@@ -9,7 +9,7 @@ RUN cd /.pyenv \
 
 # only install certain versions for tox to use
 RUN pyenv versions
-RUN pyenv global system 3.5.7 3.6.9 3.7.5 3.8.0 pypy3.6-7.2.0
+RUN pyenv global system 3.8.12 3.9.10 3.10.2 3.11.2 3.12.3 pypy3.10-v7.3.16
 
 RUN git config --global user.email "bumpversion_test@example.org"
 RUN git config --global user.name "Bumpversion Test"
