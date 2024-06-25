@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y git-core mercurial
 # Update pyenv for access to newer Python releases.
 RUN cd /.pyenv \
     && git fetch \
-    && git checkout v1.2.15
+    && git checkout v2.4.2
 
 # only install certain versions for tox to use
 RUN pyenv versions

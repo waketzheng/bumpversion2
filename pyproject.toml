@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bumpversion2"
-version = "1.0.2"
+version = "0"  # manage by poetry-version-plugin
 description = ""
 authors = ["Waket Zheng <waketzheng@gmail.com>"]
 license = "MIT"
@@ -17,6 +17,9 @@ testfixtures = "^8.3.0"
 
 [tool.poetry.scripts]
 bumpversion = "bumpversion:cli.main"
+
+[tool.poetry-version-plugin]
+source = "init"
 
 [build-system]
 requires = ["poetry-core"]

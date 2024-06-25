@@ -1,7 +1,5 @@
-**v1.0.2**
-- Migrated from setup.py/setup.cfg to poetry+pyproject.toml
-
-**v1.0.2-dev** (**unreleased**)
+**unreleased**
+**v1.0.2-dev**
 - Declare `bump2version` as unmaintained
 - Housekeeping: migrated from travis+appveyor to GitHub Actions for CI, thanks @clbarnes
 
