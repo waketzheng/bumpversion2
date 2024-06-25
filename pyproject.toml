@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "bumpversion2"
+version = "1.0.2"
+description = ""
+authors = ["Waket Zheng <waketzheng@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include="bumpversion"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+testfixtures = "^8.3.0"
+
+[tool.poetry.scripts]
+bumpversion = "bumpversion:cli.main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
