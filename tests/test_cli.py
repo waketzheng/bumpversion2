@@ -137,7 +137,7 @@ positional arguments:
   part                  Part of the version to be bumped.
   file                  Files to change (default: [])
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   --config-file FILE    Config file to read most of the variables from
                         (default: .bumpversion.cfg)
@@ -216,9 +216,10 @@ def test_usage_string(tmpdir, capsys):
         assert option_line in out, "Usage string is missing {}".format(option_line)
     if EXPECTED_USAGE not in out:
         expected_slim, out_slim = remove_space(EXPECTED_USAGE), remove_space(out)
-        if expected_slim not in out_slim:
+        out_maybe = out_slim.replace("optional arguments", "options")
+        if expected_slim not in out_slim and expected_slim not in out_maybe:
             show_diff(EXPECTED_USAGE, out)
-        assert expected_slim in out_slim
+        assert expected_slim in out_slim or expected_slim in out_maybe
     else:
         assert EXPECTED_USAGE in out
 
@@ -268,9 +269,10 @@ def test_regression_help_in_work_dir(tmpdir, capsys, vcs):
     else:
         if EXPECTED_USAGE not in out:
             expected_slim, out_slim = remove_space(EXPECTED_USAGE), remove_space(out)
-            if expected_slim not in out_slim:
+            out_maybe = out_slim.replace("optional arguments", "options")
+            if expected_slim not in out_slim and expected_slim not in out_maybe:
                 show_diff(EXPECTED_USAGE, out)
-            assert expected_slim in out_slim
+            assert expected_slim in out_slim or expected_slim in out_maybe
         else:
             assert EXPECTED_USAGE in out
 
