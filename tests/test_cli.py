@@ -4,11 +4,9 @@ import os
 import platform
 import re
 import subprocess
-import sys
 import warnings
 from configparser import RawConfigParser
 from datetime import datetime
-from difflib import context_diff
 from functools import partial
 from shlex import split as shlex_split
 from textwrap import dedent
@@ -185,18 +183,24 @@ options:
 
 
 def show_diff(a: str, b: str) -> None:
-    s1, s2 = a.splitlines(), b.splitlines()
+    s1, s2 = a.strip().splitlines(), b.strip().splitlines()
     for idx, line in enumerate(s1):
+        if not line.strip():
+            continue
         try:
             index = s2.index(line)
         except IndexError:
             pass
         else:
+            if idx != 0:
+                print(f"{idx = }")
             s2 = s2[index - idx + 1 :]
             break
-    sys.stdout.writelines(
-        context_diff(s1, s2, fromfile="expected.txt", tofile="out.txt")
-    )
+    print("-" * 20)
+    print("\n".join(s1))
+    print("=" * 20)
+    print("\n".join(s2))
+    print("^" * 20)
 
 
 def test_usage_string(tmpdir, capsys):
