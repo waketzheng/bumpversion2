@@ -26,6 +26,12 @@ jobs:
           - "pypy-3"
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -34,7 +40,7 @@ jobs:
         run: |
           git config --global user.email "bumpversion-test-git@github.actions"
           git config --global user.name "Testing Git on Travis CI"
-          git config --global init.defaultBranch main
+          git config --global init.defaultBranch `git rev-parse --abbrev-ref HEAD`
           git --version
           git config --list
       - name: Check mercurial is working
