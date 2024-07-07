@@ -9,7 +9,7 @@
 
 As the excellent original projects ([bumpversion](https://github.com/peritus/bumpversion)/[bump2version](https://github.com/c4urself/bump2version)) are no longer maintained.
 
-I make this fork to fix sha error when installing fast-dev-cli that requires bumpversion.
+I make this fork to fix some errors. It would be a pleasure to merge it back to the origins.
 
 ## Overview
 

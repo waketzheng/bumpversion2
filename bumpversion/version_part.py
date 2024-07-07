@@ -1,23 +1,26 @@
 import logging
 import re
-import sre_constants
 import string
+from typing import Type
 
 from bumpversion.exceptions import (
-    MissingValueForSerializationException,
     IncompleteVersionRepresentationException,
     InvalidVersionPartException,
+    MissingValueForSerializationException,
 )
-from bumpversion.functions import NumericFunction, ValuesFunction
+from bumpversion.functions import Function, NumericFunction, ValuesFunction
 from bumpversion.utils import keyvaluestring
 
+try:
+    import re._constants as sre_constants  # type:ignore[import-untyped]
+except ImportError:
+    import sre_constants
 
 logger = logging.getLogger(__name__)
 
 
 class PartConfiguration:
-
-    function_cls = NumericFunction
+    function_cls: Type[Function] = NumericFunction
 
     def __init__(self, *args, **kwds):
         self.function = self.function_cls(*args, **kwds)
@@ -39,12 +42,10 @@ class PartConfiguration:
 
 
 class ConfiguredVersionPartConfiguration(PartConfiguration):
-
     function_cls = ValuesFunction
 
 
 class NumericVersionPartConfiguration(PartConfiguration):
-
     function_cls = NumericFunction
 
 
@@ -96,7 +97,6 @@ class VersionPart:
 
 
 class Version:
-
     def __init__(self, values, original=None):
         self._values = dict(values)
         self.original = original
@@ -175,7 +175,7 @@ class VersionConfig:
             return None
 
         regexp_one_line = "".join(
-            [l.split("#")[0].strip() for l in self.parse_regex.pattern.splitlines()]
+            [i.split("#")[0].strip() for i in self.parse_regex.pattern.splitlines()]
         )
 
         logger.info(
@@ -240,7 +240,7 @@ class VersionConfig:
                 continue
 
             if not v.is_optional():
-                keys_needing_representation = set(keys[:i+1])
+                keys_needing_representation = set(keys[: i + 1])
 
         required_by_format = set(labels_for_format(serialize_format))
 
@@ -259,7 +259,9 @@ class VersionConfig:
     def _choose_serialize_format(self, version, context):
         chosen = None
 
-        logger.debug("Available serialization formats: '%s'", "', '".join(self.serialize_formats))
+        logger.debug(
+            "Available serialization formats: '%s'", "', '".join(self.serialize_formats)
+        )
 
         for serialize_format in self.serialize_formats:
             try:
@@ -267,14 +269,23 @@ class VersionConfig:
                     version, serialize_format, context, raise_if_incomplete=True
                 )
                 # Prefer shorter or first search expression.
-                chosen_part_count = None if not chosen else len(list(string.Formatter().parse(chosen)))
-                serialize_part_count = len(list(string.Formatter().parse(serialize_format)))
+                chosen_part_count = (
+                    None if not chosen else len(list(string.Formatter().parse(chosen)))
+                )
+                serialize_part_count = len(
+                    list(string.Formatter().parse(serialize_format))
+                )
                 if not chosen or chosen_part_count > serialize_part_count:
                     chosen = serialize_format
-                    logger.debug("Found '%s' to be a usable serialization format", chosen)
+                    logger.debug(
+                        "Found '%s' to be a usable serialization format", chosen
+                    )
                 else:
-                    logger.debug("Found '%s' usable serialization format, but it's longer", serialize_format)
-            except IncompleteVersionRepresentationException as e:
+                    logger.debug(
+                        "Found '%s' usable serialization format, but it's longer",
+                        serialize_format,
+                    )
+            except IncompleteVersionRepresentationException:
                 # If chosen, prefer shorter
                 if not chosen:
                     chosen = serialize_format
