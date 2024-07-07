@@ -21,6 +21,10 @@ bumpversion = "bumpversion:cli.main"
 [tool.poetry-version-plugin]
 source = "init"
 
+[tool.mypy]
+pretty = true
+ignore_missing_imports = true
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

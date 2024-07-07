@@ -184,15 +184,15 @@ options:
 ).lstrip()
 
 
-def show_diff(a, b):
-    s1, s2 = a.splitlines(), b.splitines()
-    for line in s1:
+def show_diff(a: str, b: str) -> None:
+    s1, s2 = a.splitlines(), b.splitlines()
+    for idx, line in enumerate(s1):
         try:
             index = s2.index(line)
         except IndexError:
             pass
         else:
-            s2 = s2[index + 1 :]
+            s2 = s2[index - idx + 1 :]
             break
     sys.stdout.writelines(
         context_diff(s1, s2, fromfile="expected.txt", tofile="out.txt")
