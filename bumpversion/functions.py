@@ -1,8 +1,12 @@
 import re
 
 
-class NumericFunction:
+class Function:
+    def bump(self, value):
+        raise NotImplementedError
 
+
+class NumericFunction(Function):
     """
     This is a class that provides a numeric function for version parts.
     It simply starts with the provided first_value (0 by default) and
@@ -18,15 +22,14 @@ class NumericFunction:
     FIRST_NUMERIC = re.compile(r"([^\d]*)(\d+)(.*)")
 
     def __init__(self, first_value=None, independent=False):
-
         if first_value is not None:
             try:
-                _, _, _ = self.FIRST_NUMERIC.search(
-                    first_value
-                ).groups()
+                _, _, _ = self.FIRST_NUMERIC.search(first_value).groups()
             except AttributeError:
                 raise ValueError(
-                    "The given first value {} does not contain any digit".format(first_value)
+                    "The given first value {} does not contain any digit".format(
+                        first_value
+                    )
                 )
         else:
             first_value = 0
@@ -44,8 +47,7 @@ class NumericFunction:
         return "".join([part_prefix, str(bumped_numeric), part_suffix])
 
 
-class ValuesFunction:
-
+class ValuesFunction(Function):
     """
     This is a class that provides a values list based function for version parts.
     It is initialized with a list of values and iterates through them when
@@ -58,8 +60,9 @@ class ValuesFunction:
     you get a ValueError exception.
     """
 
-    def __init__(self, values, optional_value=None, first_value=None, independent=False):
-
+    def __init__(
+        self, values, optional_value=None, first_value=None, independent=False
+    ):
         if not values:
             raise ValueError("Version part values cannot be empty")
 
