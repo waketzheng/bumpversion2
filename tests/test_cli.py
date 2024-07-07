@@ -4,9 +4,11 @@ import os
 import platform
 import re
 import subprocess
+import sys
 import warnings
 from configparser import RawConfigParser
 from datetime import datetime
+from difflib import context_diff
 from functools import partial
 from shlex import split as shlex_split
 from textwrap import dedent
@@ -182,6 +184,21 @@ options:
 ).lstrip()
 
 
+def show_diff(a, b):
+    s1, s2 = a.splitlines(), b.splitines()
+    for line in s1:
+        try:
+            index = s2.index(line)
+        except IndexError:
+            pass
+        else:
+            s2 = s2[index + 1 :]
+            break
+    sys.stdout.writelines(
+        context_diff(s1, s2, fromfile="expected.txt", tofile="out.txt")
+    )
+
+
 def test_usage_string(tmpdir, capsys):
     tmpdir.chdir()
 
@@ -194,7 +211,10 @@ def test_usage_string(tmpdir, capsys):
     for option_line in EXPECTED_OPTIONS:
         assert option_line in out, "Usage string is missing {}".format(option_line)
     if EXPECTED_USAGE not in out:
-        assert remove_space(EXPECTED_USAGE) in remove_space(out)
+        expected_slim, out_slim = remove_space(EXPECTED_USAGE), remove_space(out)
+        if expected_slim not in out_slim:
+            show_diff(EXPECTED_USAGE, out)
+        assert expected_slim in out_slim
     else:
         assert EXPECTED_USAGE in out
 
@@ -243,7 +263,10 @@ def test_regression_help_in_work_dir(tmpdir, capsys, vcs):
         assert "Version that needs to be updated (default: 1.7.2013)" in out
     else:
         if EXPECTED_USAGE not in out:
-            assert remove_space(EXPECTED_USAGE) in remove_space(out)
+            expected_slim, out_slim = remove_space(EXPECTED_USAGE), remove_space(out)
+            if expected_slim not in out_slim:
+                show_diff(EXPECTED_USAGE, out)
+            assert expected_slim in out_slim
         else:
             assert EXPECTED_USAGE in out
 
