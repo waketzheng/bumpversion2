@@ -133,33 +133,44 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  --config-file FILE    Config file to read most of the variables from (default: .bumpversion.cfg)
+  --config-file FILE    Config file to read most of the variables from
+                        (default: .bumpversion.cfg)
   --verbose             Print verbose logging to stderr (default: 0)
   --list                List machine readable information (default: False)
-  --allow-dirty         Don't abort if working directory is dirty (default: False)
-  --parse REGEX         Regex parsing the version string (default: (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+))
-  --serialize FORMAT    How to format what is parsed back to a version (default: ['{major}.{minor}.{patch}'])
-  --search SEARCH       Template for complete string to search (default: {current_version})
-  --replace REPLACE     Template for complete string to replace (default: {new_version})
+  --allow-dirty         Don't abort if working directory is dirty (default:
+                        False)
+  --parse REGEX         Regex parsing the version string (default:
+                        (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+))
+  --serialize FORMAT    How to format what is parsed back to a version
+                        (default: ['{major}.{minor}.{patch}'])
+  --search SEARCH       Template for complete string to search (default:
+                        {current_version})
+  --replace REPLACE     Template for complete string to replace (default:
+                        {new_version})
   --current-version VERSION
                         Version that needs to be updated (default: None)
   --no-configured-files
-                        Only replace the version in files specified on the command line, ignoring the files from the
+                        Only replace the version in files specified on the
+                        command line, ignoring the files from the
                         configuration file. (default: False)
   --dry-run, -n         Don't write any files, just pretend. (default: False)
   --new-version VERSION
-                        New version that should be in the files (default: None)
+                        New version that should be in the files (default:
+                        None)
   --commit              Commit to version control (default: False)
   --no-commit           Do not commit to version control
   --tag                 Create a tag in version control (default: False)
   --no-tag              Do not create a tag in version control
   --sign-tags           Sign tags if created (default: False)
   --no-sign-tags        Do not sign tags if created
-  --tag-name TAG_NAME   Tag name (only works with --tag) (default: v{new_version})
+  --tag-name TAG_NAME   Tag name (only works with --tag) (default:
+                        v{new_version})
   --tag-message TAG_MESSAGE
-                        Tag message (default: Bump version: {current_version} → {new_version})
+                        Tag message (default: Bump version: {current_version}
+                        → {new_version})
   --message COMMIT_MSG, -m COMMIT_MSG
-                        Commit message (default: Bump version: {current_version} → {new_version})
+                        Commit message (default: Bump version:
+                        {current_version} → {new_version})
 """
     % DESCRIPTION
 ).lstrip()
