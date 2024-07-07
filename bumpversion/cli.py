@@ -6,7 +6,6 @@ import itertools
 import logging
 import os
 import re
-import sre_constants
 import sys
 import warnings
 from configparser import (
@@ -20,6 +19,7 @@ from bumpversion.version_part import (
     VersionConfig,
     NumericVersionPartConfiguration,
     ConfiguredVersionPartConfiguration,
+    sre_constants,
 )
 from bumpversion.exceptions import (
     IncompleteVersionRepresentationException,
