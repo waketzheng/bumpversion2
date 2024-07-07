@@ -34,6 +34,7 @@ jobs:
         run: |
           git config --global user.email "bumpversion-test-git@github.actions"
           git config --global user.name "Testing Git on Travis CI"
+          git config --global init.defaultBranch main
           git --version
           git config --list
       - name: Check mercurial is working

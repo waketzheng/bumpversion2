@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import platform
+import re
 import subprocess
 import warnings
 from configparser import RawConfigParser
@@ -26,6 +27,7 @@ def _get_subprocess_env():
 
 
 SUBPROCESS_ENV = _get_subprocess_env()
+RE_SPACE = re.compile(r"\s+")
 call = partial(subprocess.call, env=SUBPROCESS_ENV, shell=True)
 check_call = partial(subprocess.check_call, env=SUBPROCESS_ENV)
 check_output = partial(subprocess.check_output, env=SUBPROCESS_ENV)
@@ -43,6 +45,10 @@ VCS_GIT = pytest.param("git", marks=xfail_if_no_git())
 VCS_MERCURIAL = pytest.param("hg", marks=xfail_if_no_hg())
 COMMIT = "[bumpversion]\ncommit = True"
 COMMIT_NOT_TAG = "[bumpversion]\ncommit = True\ntag = False"
+
+
+def remove_space(s: str) -> str:
+    return RE_SPACE.sub("", s)
 
 
 @pytest.fixture(params=[VCS_GIT, VCS_MERCURIAL])
@@ -187,7 +193,10 @@ def test_usage_string(tmpdir, capsys):
 
     for option_line in EXPECTED_OPTIONS:
         assert option_line in out, "Usage string is missing {}".format(option_line)
-    assert EXPECTED_USAGE in out
+    if EXPECTED_USAGE not in out:
+        assert remove_space(EXPECTED_USAGE) in remove_space(out)
+    else:
+        assert EXPECTED_USAGE in out
 
 
 def test_usage_string_fork(tmpdir):
@@ -233,7 +242,10 @@ def test_regression_help_in_work_dir(tmpdir, capsys, vcs):
     if vcs == "git":
         assert "Version that needs to be updated (default: 1.7.2013)" in out
     else:
-        assert EXPECTED_USAGE in out
+        if EXPECTED_USAGE not in out:
+            assert remove_space(EXPECTED_USAGE) in remove_space(out)
+        else:
+            assert EXPECTED_USAGE in out
 
 
 def test_defaults_in_usage_with_config(tmpdir, capsys):
