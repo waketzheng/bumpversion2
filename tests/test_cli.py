@@ -7,9 +7,10 @@ import subprocess
 import sys
 import warnings
 from configparser import RawConfigParser
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 from datetime import datetime, timezone
 from functools import partial
+from io import StringIO
 from pathlib import Path
 from shlex import split as shlex_split
 from textwrap import dedent
@@ -17,7 +18,7 @@ from typing import Generator, List
 from unittest import mock
 
 import pytest
-from testfixtures import LogCapture
+from testfixtures import LogCapture as _LogCapture
 
 import bumpversion
 from bumpversion import exceptions
@@ -131,6 +132,16 @@ def _mock_calls_to_string(called_mock) -> List[str]:
         )
         for name, args, kwargs in called_mock.mock_calls
     ]
+
+
+class LogCapture(_LogCapture):
+    def __enter__(self):
+        self.redirect = redirect_stdout(StringIO()).__enter__()
+        super().__enter__()
+
+    def __exit__(self, *args, **kw):
+        super().__exit__(*args, **kw)
+        self.redirect.__exit__(*args, **kw)
 
 
 EXPECTED_OPTIONS = r"""
