@@ -319,12 +319,9 @@ def test_simple_replacement(tmp_dir):
 def test_simple_replacement_in_utf8_file(tmp_dir):
     version_file = tmp_dir.joinpath("VERSION")
     version_file.write_bytes("Kröt1.3.0".encode())
-    out = version_file.read_bytes()
-    main(
-        shlex_split(
-            "patch --verbose --current-version 1.3.0 --new-version 1.3.1 VERSION"
-        )
-    )
+    cmd = f"patch --verbose --current-version 1.3.0 --new-version 1.3.1 {version_file.name}"
+    with mock.patch("bumpversion.cli.logger"):
+        main(shlex_split(cmd))
     out = version_file.read_bytes()
     assert "'Kr\\xc3\\xb6t1.3.1'" in repr(out)
 
@@ -2621,9 +2618,9 @@ message = XXX
         main(["patch"])
 
     # And return the output of the failing command
-    print('*' * 30)
+    print("*" * 30)
     print(caplog.text)
-    print('^' * 30)
+    print("^" * 30)
     assert "Failed to run" in caplog.text
 
 

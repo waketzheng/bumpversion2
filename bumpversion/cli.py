@@ -83,11 +83,7 @@ def main(original_args=None):
         explicit_config = known_args.config_file
     config_file = _determine_config_file(explicit_config)
     config, config_file_exists, config_newlines, part_configs, files = (
-        _load_configuration(
-            config_file,
-            explicit_config,
-            defaults,
-        )
+        _load_configuration(config_file, explicit_config, defaults)
     )
     known_args, parser2, remaining_argv = _parse_arguments_phase_2(
         args, known_args, defaults, root_parser

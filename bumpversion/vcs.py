@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
+from typing import List, Optional
 
 from bumpversion.exceptions import (
     MercurialDoesNotSupportSignedTagsException,
@@ -13,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class BaseVCS:
-    _TEST_USABLE_COMMAND = None
-    _COMMIT_COMMAND = None
+    _TEST_USABLE_COMMAND: Optional[List[str]] = None
+    _COMMIT_COMMAND: Optional[List[str]] = None
 
     @classmethod
     def commit(cls, message, context, extra_args=None):
