@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import subprocess
+import sys
 import warnings
 from configparser import RawConfigParser
 from contextlib import contextmanager
@@ -21,6 +22,25 @@ from testfixtures import LogCapture
 import bumpversion
 from bumpversion import exceptions
 from bumpversion.cli import DESCRIPTION, main, split_args_in_optional_and_positional
+
+if sys.version_info >= (3, 11):
+    from contextlib import chdir
+else:
+    from contextlib import AbstractContextManager
+
+    class chdir(AbstractContextManager):
+        """Non thread-safe context manager to change the current working directory."""
+
+        def __init__(self, path):
+            self.path = path
+            self._old_cwd = []
+
+        def __enter__(self):
+            self._old_cwd.append(os.getcwd())
+            os.chdir(self.path)
+
+        def __exit__(self, *excinfo):
+            os.chdir(self._old_cwd.pop())
 
 
 def _get_subprocess_env():
@@ -87,12 +107,8 @@ def file_keyword(request):
 
 @pytest.fixture
 def tmp_dir(tmp_path: Path) -> Generator[Path, None, None]:
-    pwd = Path.cwd()
-    os.chdir(tmp_path)
-    try:
+    with chdir(tmp_path):
         yield tmp_path
-    finally:
-        os.chdir(pwd)
 
 
 try:
