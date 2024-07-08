@@ -33,6 +33,7 @@ jobs:
           git config --global init.defaultBranch `git rev-parse --abbrev-ref HEAD`
           git --version
           git config --list
+          git fetch --tags
       - name: Check mercurial is working
         run: |
           echo -e '[ui]\nusername = Testing Mercurial on Travis CI <bumpversion-test-hg@travis.ci>' > ~/.hgrc
