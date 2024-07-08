@@ -6,6 +6,7 @@ import re
 import subprocess
 import warnings
 from configparser import RawConfigParser
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
@@ -316,11 +317,18 @@ def test_simple_replacement(tmp_dir):
     assert "1.2.1" == tmp_dir.joinpath("VERSION").read_text()
 
 
+@contextmanager
+def patch_loggers():
+    with mock.patch("bumpversion.cli.logger"):
+        with mock.patch("bumpversion.cli.logger_list"):
+            yield
+
+
 def test_simple_replacement_in_utf8_file(tmp_dir):
     version_file = tmp_dir.joinpath("VERSION")
     version_file.write_bytes("Kröt1.3.0".encode())
     cmd = f"patch --verbose --current-version 1.3.0 --new-version 1.3.1 {version_file.name}"
-    with mock.patch("bumpversion.cli.logger"):
+    with patch_loggers():
         main(shlex_split(cmd))
     out = version_file.read_bytes()
     assert "'Kr\\xc3\\xb6t1.3.1'" in repr(out)
@@ -452,7 +460,8 @@ current_version: 0.0.13
 new_version: 0.0.14
 [bumpversion:file:file3]""")
 
-    main(["patch", "--verbose"])
+    with patch_loggers():
+        main(["patch", "--verbose"])
 
     assert """[bumpversion]
 current_version = 0.0.14
