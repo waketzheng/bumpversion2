@@ -29,6 +29,7 @@ jobs:
         run: |
           git config --global user.email "bumpversion-test-git@github.actions"
           git config --global user.name "Testing Git on Travis CI"
+          git config --global --add safe.directory `pwd`
           git config --global init.defaultBranch `git rev-parse --abbrev-ref HEAD`
           git --version
           git config --list
