@@ -12,7 +12,7 @@ from configparser import (
     NoOptionError,
     RawConfigParser,
 )
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bumpversion import __title__, __version__
 from bumpversion.exceptions import (
@@ -52,7 +52,7 @@ RE_DETECT_SECTION_TYPE = re.compile(
 
 logger_list = logging.getLogger("bumpversion.list")
 logger = logging.getLogger(__name__)
-time_context = {"now": datetime.now(), "utcnow": datetime.utcnow()}
+time_context = {"now": datetime.now(), "utcnow": datetime.now(timezone.utc)}
 special_char_context = {c: c for c in ("#", ";")}
 
 

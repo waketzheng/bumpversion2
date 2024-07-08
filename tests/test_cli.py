@@ -6,7 +6,7 @@ import re
 import subprocess
 import warnings
 from configparser import RawConfigParser
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from shlex import split as shlex_split
@@ -2224,7 +2224,7 @@ def test_search_replace_to_avoid_updating_unconcerned_lines(tmp_dir):
     with LogCapture() as log_capture:
         main(["minor", "--verbose"])
 
-    utc_today = datetime.utcnow().strftime("%Y-%m-%d")
+    utc_today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     log_capture.check(
         ("bumpversion.cli", "INFO", "Reading config file .bumpversion.cfg:"),
@@ -2621,6 +2621,9 @@ message = XXX
         main(["patch"])
 
     # And return the output of the failing command
+    print('*' * 30)
+    print(caplog.text)
+    print('^' * 30)
     assert "Failed to run" in caplog.text
 
 
