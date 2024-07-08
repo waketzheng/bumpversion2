@@ -2888,13 +2888,16 @@ def test_build_number_configuration(tmp_dir):
         """)
     )
 
-    main(["build"])
+    with patch_loggers():
+        main(["build"])
     assert "2.1.6-5124" == tmp_dir.joinpath("VERSION.txt").read_text()
 
-    main(["major"])
+    with patch_loggers():
+        main(["major"])
     assert "3.0.0-5124" == tmp_dir.joinpath("VERSION.txt").read_text()
 
-    main(["build"])
+    with patch_loggers():
+        main(["build"])
     assert "3.0.0-5125" == tmp_dir.joinpath("VERSION.txt").read_text()
 
 
