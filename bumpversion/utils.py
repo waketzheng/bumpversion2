@@ -1,8 +1,7 @@
-from argparse import _AppendAction
-from difflib import unified_diff
-import io
 import logging
 import os
+from argparse import _AppendAction
+from difflib import unified_diff
 
 from bumpversion.exceptions import VersionNotFoundException
 
@@ -10,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class DiscardDefaultIfSpecifiedAppendAction(_AppendAction):
-
     """
     Fixes bug http://bugs.python.org/issue16399 for 'append' action
     """
@@ -20,9 +18,7 @@ class DiscardDefaultIfSpecifiedAppendAction(_AppendAction):
             setattr(namespace, self.dest, [])
             self._discarded_default = True  # pylint: disable=attribute-defined-outside-init
 
-        super().__call__(
-            parser, namespace, values, option_string=None
-        )
+        super().__call__(parser, namespace, values, option_string=None)
 
 
 def keyvaluestring(d):
@@ -34,7 +30,6 @@ def prefixed_environ():
 
 
 class ConfiguredFile:
-
     def __init__(self, path, versionconfig):
         self.path = path
         self._versionconfig = versionconfig
@@ -66,9 +61,7 @@ class ConfiguredFile:
 
         # version not found
         raise VersionNotFoundException(
-            "Did not find '{}' in file: '{}'".format(
-                search_expression, self.path
-            )
+            "Did not find '{}' in file: '{}'".format(search_expression, self.path)
         )
 
     def contains(self, search):
@@ -101,7 +94,6 @@ class ConfiguredFile:
         return False
 
     def replace(self, current_version, new_version, context, dry_run):
-
         with open(self.path, "rt", encoding="utf-8") as f:
             file_content_before = f.read()
             file_new_lines = f.newlines
@@ -123,7 +115,9 @@ class ConfiguredFile:
             )
 
         if file_content_before != file_content_after:
-            logger.info("%s file %s:", "Would change" if dry_run else "Changing", self.path)
+            logger.info(
+                "%s file %s:", "Would change" if dry_run else "Changing", self.path
+            )
             logger.info(
                 "\n".join(
                     list(
@@ -138,7 +132,11 @@ class ConfiguredFile:
                 )
             )
         else:
-            logger.info("%s file %s", "Would not change" if dry_run else "Not changing", self.path)
+            logger.info(
+                "%s file %s",
+                "Would not change" if dry_run else "Not changing",
+                self.path,
+            )
 
         if not dry_run:
             with open(self.path, "wt", encoding="utf-8", newline=file_new_lines) as f:

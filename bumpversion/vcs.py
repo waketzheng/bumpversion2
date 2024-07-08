@@ -5,16 +5,14 @@ import subprocess
 from tempfile import NamedTemporaryFile
 
 from bumpversion.exceptions import (
-    WorkingDirectoryIsDirtyException,
     MercurialDoesNotSupportSignedTagsException,
+    WorkingDirectoryIsDirtyException,
 )
-
 
 logger = logging.getLogger(__name__)
 
 
 class BaseVCS:
-
     _TEST_USABLE_COMMAND = None
     _COMMIT_COMMAND = None
 
@@ -58,7 +56,6 @@ class BaseVCS:
 
 
 class Git(BaseVCS):
-
     _TEST_USABLE_COMMAND = ["git", "rev-parse", "--git-dir"]
     _COMMIT_COMMAND = ["git", "commit", "-F"]
 
@@ -139,7 +136,6 @@ class Git(BaseVCS):
 
 
 class Mercurial(BaseVCS):
-
     _TEST_USABLE_COMMAND = ["hg", "root"]
     _COMMIT_COMMAND = ["hg", "commit", "--logfile"]
 
