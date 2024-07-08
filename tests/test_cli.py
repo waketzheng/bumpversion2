@@ -135,9 +135,9 @@ def _mock_calls_to_string(called_mock) -> List[str]:
 
 
 class LogCapture(_LogCapture):
-    def __enter__(self):
+    def __enter__(self) -> "LogCapture":
         self.redirect = redirect_stdout(StringIO()).__enter__()
-        super().__enter__()
+        return super().__enter__()
 
     def __exit__(self, *args, **kw):
         super().__exit__(*args, **kw)
