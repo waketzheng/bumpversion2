@@ -813,7 +813,8 @@ def test_commit_and_tag(tmp_dir, vcs):
 
 
 def test_commit_and_tag_with_configfile(tmp_dir, vcs):
-    tmp_dir.joinpath(".bumpversion.cfg").write_text(
+    cfg_file = tmp_dir.joinpath(".bumpversion.cfg")
+    cfg_file.write_text(
         """[bumpversion]\ncommit = True\ntag = True"""
     )
 
@@ -821,6 +822,7 @@ def test_commit_and_tag_with_configfile(tmp_dir, vcs):
     tmp_dir.joinpath("VERSION").write_text("48.1.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
+    check_call([vcs, "add", cfg_file.name])
     print(f"{Path.cwd() == tmp_dir = }")
     print(f'{list(Path().glob("*")) = }')
     r = subprocess.run(
