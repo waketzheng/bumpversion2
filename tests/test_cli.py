@@ -821,15 +821,21 @@ def test_commit_and_tag_with_configfile(tmp_dir, vcs):
     tmp_dir.joinpath("VERSION").write_text("48.1.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
-    print(f"{Path.cwd() = }")
+    print(f"{Path.cwd() == tmp_dir = }")
     print(f'{list(Path().glob("*")) = }')
+    r = subprocess.run(
+        ["git", "add", "--update", ".bumpversion.cfg"], capture_output=True
+    )
+    print(f"{r.returncode = }")
+    print(f"{r.stdout.decode() = }")
+    print(f"{r.stderr.decode() = }")
+    import time
 
-    with mock.patch("subprocess.check_output"):
-        main(["patch", "--current-version", "48.1.1", "--no-tag", "VERSION"])
-    return
+    time.sleep(0.3)
+    # with mock.patch("subprocess.check_output"):
+    main(["patch", "--current-version", "48.1.1", "--no-tag", "VERSION"])
 
     assert "48.1.2" == tmp_dir.joinpath("VERSION").read_text()
-
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
 
     assert "-48.1.1" in log
