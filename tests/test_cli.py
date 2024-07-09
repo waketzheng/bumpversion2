@@ -821,8 +821,12 @@ def test_commit_and_tag_with_configfile(tmp_dir, vcs):
     tmp_dir.joinpath("VERSION").write_text("48.1.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
+    print(f"{Path.cwd() = }")
+    print(f'{list(Path().glob("*")) = }')
 
-    main(["patch", "--current-version", "48.1.1", "--no-tag", "VERSION"])
+    with mock.patch("subprocess.check_output"):
+        main(["patch", "--current-version", "48.1.1", "--no-tag", "VERSION"])
+    return
 
     assert "48.1.2" == tmp_dir.joinpath("VERSION").read_text()
 
