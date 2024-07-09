@@ -118,17 +118,15 @@ class Git(BaseVCS):
 
     @classmethod
     def add_path(cls, path):
-        try:
-            subprocess.check_output(["git", "add", "--update", path])
-        except subprocess.CalledProcessError as e:
-            from pathlib import Path
+        from pathlib import Path
 
+        if str(path) == ".bumpversion.cfg":
             print(f'{path = }\n{Path.cwd() = }\n{list(Path().glob("*")) = }')
             r = subprocess.run(["pwd"], capture_output=True)
             r2 = subprocess.run(["ls"], capture_output=True)
             print(f"{r.stdout.decode() = }")
             print(f"{r2.stdout.decode() = }")
-            raise e
+        subprocess.check_output(["git", "add", "--update", path])
 
     @classmethod
     def tag(cls, sign, name, message):
