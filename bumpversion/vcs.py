@@ -121,11 +121,11 @@ class Git(BaseVCS):
         from pathlib import Path
 
         if str(path) == ".bumpversion.cfg":
-            print(f'{path = }\n{Path.cwd() = }\n{list(Path().glob("*")) = }')
+            print(f'{path = }\n{Path.cwd() = }\n{list(Path().glob("*")) = }', flush=True)
             r = subprocess.run(["pwd"], capture_output=True)
             r2 = subprocess.run(["ls"], capture_output=True)
-            print(f"{r.stdout.decode() = }")
-            print(f"{r2.stdout.decode() = }")
+            print(f"{r.stdout.decode() = }", flush=True)
+            print(f"{r2.stdout.decode() = }", flush=True)
         subprocess.check_output(["git", "add", "--update", path])
 
     @classmethod

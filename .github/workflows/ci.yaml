@@ -45,4 +45,4 @@ jobs:
           poetry self add poetry-version-plugin
           poetry install
       - name: Run tests
-        run: pytest -s -r a [] tests --import-mode importlib
+        run: pytest -s -r a '[]' tests/test_cli.py::test_commit_and_tag_with_configfile --import-mode importlib
