@@ -2654,9 +2654,6 @@ message = XXX
         main(["patch"])
 
     # And return the output of the failing command
-    print("*" * 30)
-    print(caplog.text)
-    print("^" * 30)
     assert "Failed to run" in caplog.text
 
 
