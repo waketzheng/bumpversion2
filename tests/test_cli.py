@@ -852,6 +852,7 @@ def test_commit_and_not_tag_with_configfile(tmp_dir, vcs, config):
     check_call([vcs, "init"])
     tmp_dir.joinpath("VERSION").write_text("48.1.1")
     check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["patch", "--current-version", "48.1.1", "VERSION"])
@@ -955,6 +956,7 @@ def test_current_version_from_tag_written_to_config_file(tmp_dir, git):
 
     check_call([git, "init"])
     check_call([git, "add", "updated_also_in_config_file"])
+    check_call([git, "add", ".bumpversion.cfg"])
     check_call([git, "commit", "-m", "initial"])
     check_call([git, "tag", "v14.6.0"])
 
@@ -1084,11 +1086,6 @@ def test_tag_name(tmp_dir, vcs):
 
 
 def test_message_from_config_file(tmp_dir, vcs):
-    check_call([vcs, "init"])
-    tmp_dir.joinpath("VERSION").write_text("400.0.0")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
     tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version: 400.0.0
 new_version: 401.0.0
@@ -1096,6 +1093,11 @@ commit: True
 tag: True
 message: {current_version} was old, {new_version} is new
 tag_name: from-{current_version}-to-{new_version}""")
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("400.0.0")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
 
@@ -1119,11 +1121,6 @@ def test_all_parts_in_message_and_serialize_and_tag_name_from_config_file(tmp_di
     In message and tag_name, also ensure that new_version and
     current_version are correct.
     """
-    check_call([vcs, "init"])
-    tmp_dir.joinpath("VERSION").write_text("400.1.2.101")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
     tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version: 400.1.2.101
 new_version: 401.2.3.102
@@ -1136,6 +1133,11 @@ tag_name: from-{current_version}-aka-{current_major}.{current_minor}.{current_pa
 
 [bumpversion:part:custom]
 """)
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("400.1.2.101")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
 
@@ -1306,11 +1308,6 @@ except ImportError:
     reason="old ConfigParser uses non-utf-8-strings internally",
 )
 def test_utf8_message_from_config_file(tmp_dir, vcs):
-    check_call([vcs, "init"])
-    tmp_dir.joinpath("VERSION").write_text("500.0.0")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
     initial_config = """[bumpversion]
 current_version = 500.0.0
 commit = True
@@ -1318,6 +1315,12 @@ message = Nová verze: {current_version} ☃, {new_version} ☀
 """
 
     tmp_dir.joinpath(".bumpversion.cfg").write_bytes(initial_config.encode("utf-8"))
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("500.0.0")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
+
     main(["major", "VERSION"])
     check_output([vcs, "log", "-p"])
     expected_new_config = initial_config.replace("500", "501")
@@ -1328,11 +1331,6 @@ message = Nová verze: {current_version} ☃, {new_version} ☀
 
 
 def test_utf8_message_from_config_file_2(tmp_dir, vcs):
-    check_call([vcs, "init"])
-    tmp_dir.joinpath("VERSION").write_text("10.10.0")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
     initial_config = """[bumpversion]
 current_version = 10.10.0
 commit = True
@@ -1340,6 +1338,11 @@ message = [{now}] [{utcnow} {utcnow:%YXX%mYY%d}]
 
 """
     tmp_dir.joinpath(".bumpversion.cfg").write_text(initial_config)
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("10.10.0")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
 
@@ -2652,7 +2655,7 @@ message = XXX
         main(["patch"])
 
     # And return the output of the failing command
-    assert "Failed to run" in caplog.text
+    assert "Failed to run" in caplog.text, caplog.text
 
 
 def test_regression_characters_after_last_label_serialize_string(tmp_dir):
