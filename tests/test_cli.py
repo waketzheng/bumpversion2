@@ -2640,21 +2640,24 @@ tag = True
 commit = True
 message = XXX
 """
-
-    tmp_dir.joinpath("file1").write_text("foo")
+    file1 = tmp_dir / "file1"
+    file1.write_text("foo")
+    cfg_file = tmp_dir / ".bumpversion.cfg"
+    cfg_file.touch()
 
     # If I have a repo with an initial commit
     check_call([git, "init"])
-    check_call([git, "add", "file1"])
+    check_call([git, "add", file1.name])
+    check_call([git, "add", cfg_file.name])
     check_call([git, "commit", "-m", "initial commit"])
 
-    # If I add the bumpversion config, uncommitted
-    tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
+    # If I change the bumpversion config, uncommitted
+    cfg_file.write_text(config)
 
     # I expect bumpversion patch to fail
     with pytest.raises(subprocess.CalledProcessError):
         main(["patch"])
-    print(caplog.text)
+
     # And return the output of the failing command
     assert "Failed to run" in caplog.text
 
