@@ -112,6 +112,19 @@ def tmp_dir(tmp_path: Path) -> Generator[Path, None, None]:
         yield tmp_path
 
 
+class TextIO(StringIO):
+    @property
+    def text(self) -> str:
+        return self.getvalue()
+
+
+@contextmanager
+def capture_log():
+    cap = TextIO()
+    with redirect_stdout(cap):
+        yield cap
+
+
 try:
     RawConfigParser(empty_lines_in_values=False)
     using_old_configparser = False
@@ -2633,33 +2646,30 @@ def test_regression_tag_name_with_hyphens(tmp_dir, git):
     main(["patch", "some_source.txt"])
 
 
-def test_unclean_repo_exception(tmp_dir, git, caplog):
+def test_unclean_repo_exception(tmp_dir, git):
     config = """[bumpversion]
 current_version = 0.0.0
 tag = True
 commit = True
 message = XXX
 """
-    file1 = tmp_dir / "file1"
-    file1.write_text("foo")
-    cfg_file = tmp_dir / ".bumpversion.cfg"
-    cfg_file.touch()
+    tmp_dir.joinpath("file1").write_text("foo")
 
     # If I have a repo with an initial commit
     check_call([git, "init"])
-    check_call([git, "add", file1.name])
-    check_call([git, "add", cfg_file.name])
+    check_call([git, "add", "file1"])
     check_call([git, "commit", "-m", "initial commit"])
 
-    # If I change the bumpversion config, uncommitted
-    cfg_file.write_text(config)
+    # If I add the bumpversion config, uncommitted
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     # I expect bumpversion patch to fail
     with pytest.raises(subprocess.CalledProcessError):
-        main(["patch"])
+        with capture_log() as cap_log:
+            main(["patch"])
 
     # And return the output of the failing command
-    assert "Failed to run" in caplog.text
+    assert "Failed to run" in cap_log.text
 
 
 def test_regression_characters_after_last_label_serialize_string(tmp_dir):
