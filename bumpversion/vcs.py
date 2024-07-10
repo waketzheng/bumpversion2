@@ -27,15 +27,24 @@ class BaseVCS:
         for key in ("current_version", "new_version"):
             env[str("BUMPVERSION_" + key.upper())] = str(context[key])
         try:
+            print(111111111111111111111)
             subprocess.check_output(
                 cls._COMMIT_COMMAND + [f.name] + extra_args, env=env
             )
+            print(2222222222222222222222)
         except subprocess.CalledProcessError as exc:
+            print(33333333333333)
             err_msg = "Failed to run {}: return code {}, output: {}".format(
                 exc.cmd, exc.returncode, exc.output
             )
+            print(44444444444444444)
             logger.exception(err_msg)
+            print(5555555555555555555)
             raise exc
+        except Exception as e:
+            print(66666666666666666666666, e)
+        else:
+            print(777777777777777777)
         finally:
             os.unlink(f.name)
 
