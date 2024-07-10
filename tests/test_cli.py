@@ -2665,11 +2665,13 @@ message = XXX
 
     # I expect bumpversion patch to fail
     with pytest.raises(subprocess.CalledProcessError):
-        with capture_log() as cap_log:
+        with capture_log() as cap:
             main(["patch"])
-
+    print("-" * 50)
+    print(cap.text)
+    print("^" * 50)
     # And return the output of the failing command
-    assert "Failed to run" in cap_log.text
+    assert "Failed to run" in cap.text
 
 
 def test_regression_characters_after_last_label_serialize_string(tmp_dir):
