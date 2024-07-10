@@ -2667,9 +2667,10 @@ message = XXX
     with pytest.raises(subprocess.CalledProcessError):
         with capture_log() as cap:
             main(["patch"])
-    print("-" * 50)
-    print(cap.text)
-    print("^" * 50)
+    with capture_log():
+        print("-" * 50)
+        print(cap.text)
+        print("^" * 50)
     # And return the output of the failing command
     assert "Failed to run" in cap.text
 
