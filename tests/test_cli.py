@@ -2383,7 +2383,7 @@ def test_search_replace_expanding_changelog(tmp_dir):
 
     tmp_dir.joinpath(".bumpversion.cfg").write_text(config_content)
 
-    with mock.patch("bumpversion.cli.logger"):
+    with patch_loggers():
         main(["minor", "--verbose"])
 
     predate = dedent("""
@@ -2664,13 +2664,12 @@ message = XXX
     tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     # I expect bumpversion patch to fail
-    try:
+    with pytest.raises(subprocess.CalledProcessError):
         main(["patch"])
-    except subprocess.CalledProcessError:
-        pass
-    print("-" * 30)
-    print(caplog.text)
-    print("^" * 30)
+    with patch_loggers():
+        print("-" * 30)
+        print(caplog.text)
+        print("^" * 30)
     # And return the output of the failing command
     assert "Failed to run" in caplog.text
 
