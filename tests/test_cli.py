@@ -1157,10 +1157,6 @@ def test_all_parts_in_replace_from_config_file(tmp_dir, vcs):
     """
     Ensure that major/minor/patch *and* custom parts can be used in 'replace'.
     """
-    check_call([vcs, "init"])
-    tmp_dir.joinpath("VERSION").write_text("my version is 400.1.2.101\n")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
 
     tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version: 400.1.2.101
@@ -1175,6 +1171,11 @@ tag: False
 [bumpversion:VERSION]
 search = my version is {current_version}
 replace = my version is {new_major}.{new_minor}.{new_patch}.{new_custom}""")
+    tmp_dir.joinpath("VERSION").write_text("my version is 400.1.2.101\n")
+    check_call([vcs, "init"])
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
     log = check_output([vcs, "log", "-p"])
@@ -2653,9 +2654,9 @@ message = XXX
     # I expect bumpversion patch to fail
     with pytest.raises(subprocess.CalledProcessError):
         main(["patch"])
-
+    print(caplog.text)
     # And return the output of the failing command
-    assert "Failed to run" in caplog.text, caplog.text
+    assert "Failed to run" in caplog.text
 
 
 def test_regression_characters_after_last_label_serialize_string(tmp_dir):
