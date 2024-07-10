@@ -2646,7 +2646,7 @@ def test_regression_tag_name_with_hyphens(tmp_dir, git):
     main(["patch", "some_source.txt"])
 
 
-def test_unclean_repo_exception(tmp_dir, git):
+def test_unclean_repo_exception(tmp_dir, git, caplog):
     config = """[bumpversion]
 current_version = 0.0.0
 tag = True
@@ -2664,15 +2664,14 @@ message = XXX
     tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     # I expect bumpversion patch to fail
-    with pytest.raises(subprocess.CalledProcessError):
-        with capture_log() as cap:
-            main(["patch"])
     with capture_log():
-        print("-" * 50)
-        print(cap.text)
-        print("^" * 50)
+        with pytest.raises(subprocess.CalledProcessError):
+            main(["patch"])
+    print("-" * 30)
+    print(caplog.text)
+    print("^" * 30)
     # And return the output of the failing command
-    assert "Failed to run" in cap.text
+    assert "Failed to run" in caplog.text
 
 
 def test_regression_characters_after_last_label_serialize_string(tmp_dir):
