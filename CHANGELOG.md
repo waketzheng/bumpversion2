@@ -1,4 +1,5 @@
 **unreleased**
+**v1.4.2-dev**
 **v1.4.1**
 **v1.0.2-dev**
 - Declare `bump2version` as unmaintained
