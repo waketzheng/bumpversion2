@@ -1,5 +1,3 @@
-
-
 class BumpVersionException(Exception):
     """Custom base class for all BumpVersion exception types."""
 

@@ -1,5 +1,4 @@
 import argparse
-from datetime import datetime
 import glob
 import io
 import itertools
@@ -10,23 +9,17 @@ import sys
 import warnings
 from configparser import (
     ConfigParser,
-    RawConfigParser,
     NoOptionError,
+    RawConfigParser,
 )
+from datetime import datetime, timezone
 
-from bumpversion import __version__, __title__
-from bumpversion.version_part import (
-    VersionConfig,
-    NumericVersionPartConfiguration,
-    ConfiguredVersionPartConfiguration,
-    sre_constants,
-)
+from bumpversion import __title__, __version__
 from bumpversion.exceptions import (
     IncompleteVersionRepresentationException,
     MissingValueForSerializationException,
     WorkingDirectoryIsDirtyException,
 )
-
 from bumpversion.utils import (
     ConfiguredFile,
     DiscardDefaultIfSpecifiedAppendAction,
@@ -34,12 +27,15 @@ from bumpversion.utils import (
     prefixed_environ,
 )
 from bumpversion.vcs import Git, Mercurial
-
+from bumpversion.version_part import (
+    ConfiguredVersionPartConfiguration,
+    NumericVersionPartConfiguration,
+    VersionConfig,
+    sre_constants,
+)
 
 DESCRIPTION = "{}: v{} (using Python v{})".format(
-    __title__,
-    __version__,
-    sys.version.split("\n")[0].split(" ")[0]
+    __title__, __version__, sys.version.split("\n")[0].split(" ")[0]
 )
 VCS = [Git, Mercurial]
 
@@ -56,7 +52,7 @@ RE_DETECT_SECTION_TYPE = re.compile(
 
 logger_list = logging.getLogger("bumpversion.list")
 logger = logging.getLogger(__name__)
-time_context = {"now": datetime.now(), "utcnow": datetime.utcnow()}
+time_context = {"now": datetime.now(), "utcnow": datetime.now(timezone.utc)}
 special_char_context = {c: c for c in ("#", ";")}
 
 
@@ -86,8 +82,8 @@ def main(original_args=None):
     if hasattr(known_args, "config_file"):
         explicit_config = known_args.config_file
     config_file = _determine_config_file(explicit_config)
-    config, config_file_exists, config_newlines, part_configs, files = _load_configuration(
-        config_file, explicit_config, defaults,
+    config, config_file_exists, config_newlines, part_configs, files = (
+        _load_configuration(config_file, explicit_config, defaults)
     )
     known_args, parser2, remaining_argv = _parse_arguments_phase_2(
         args, known_args, defaults, root_parser
@@ -105,9 +101,16 @@ def main(original_args=None):
 
     # calculate the desired new version
     new_version = _assemble_new_version(
-        context, current_version, defaults, known_args.current_version, positionals, version_config
+        context,
+        current_version,
+        defaults,
+        known_args.current_version,
+        positionals,
+        version_config,
     )
-    args, file_names = _parse_arguments_phase_3(remaining_argv, positionals, defaults, parser2)
+    args, file_names = _parse_arguments_phase_3(
+        remaining_argv, positionals, defaults, parser2
+    )
     new_version = _parse_new_version(args, new_version, version_config)
 
     # do not use the files from the config
@@ -118,22 +121,36 @@ def main(original_args=None):
     vcs = _determine_vcs_dirty(VCS, defaults)
     files.extend(
         ConfiguredFile(file_name, version_config)
-        for file_name
-        in (file_names or positionals[1:])
+        for file_name in (file_names or positionals[1:])
     )
     _check_files_contain_version(files, current_version, context)
-    _replace_version_in_files(files, current_version, new_version, args.dry_run, context)
+    _replace_version_in_files(
+        files, current_version, new_version, args.dry_run, context
+    )
     _log_list(config, args.new_version)
 
     # store the new version
     _update_config_file(
-        config, config_file, config_newlines, config_file_exists, args.new_version, args.dry_run,
+        config,
+        config_file,
+        config_newlines,
+        config_file_exists,
+        args.new_version,
+        args.dry_run,
     )
 
     # commit and tag
     if vcs:
-        context = _commit_to_vcs(files, context, config_file, config_file_exists, vcs,
-                                 args, current_version, new_version)
+        context = _commit_to_vcs(
+            files,
+            context,
+            config_file,
+            config_file_exists,
+            vcs,
+            args,
+            current_version,
+            new_version,
+        )
         _tag_in_vcs(vcs, context, args)
 
 
@@ -143,7 +160,6 @@ def split_args_in_optional_and_positional(args):
 
     positions = []
     for i, arg in enumerate(args):
-
         previous = None
 
         if i > 0:
@@ -219,7 +235,7 @@ def _setup_logging(show_list, verbose):
         log_level = [logging.WARNING, logging.INFO, logging.DEBUG][verbose]
     except IndexError:
         log_level = logging.DEBUG
-    root_logger = logging.getLogger('')
+    root_logger = logging.getLogger("")
     root_logger.setLevel(log_level)
     logger.debug("Starting %s", DESCRIPTION)
 
@@ -296,9 +312,7 @@ def _load_configuration(config_file, explicit_config, defaults):
 
     for boolvaluename in ("commit", "tag", "dry_run"):
         try:
-            defaults[boolvaluename] = config.getboolean(
-                "bumpversion", boolvaluename
-            )
+            defaults[boolvaluename] = config.getboolean("bumpversion", boolvaluename)
         except NoOptionError:
             pass  # no default value then ;)
 
@@ -327,12 +341,12 @@ def _load_configuration(config_file, explicit_config, defaults):
                 )
                 ThisVersionPartConfiguration = ConfiguredVersionPartConfiguration
 
-            if config.has_option(section_name, 'independent'):
-                section_config['independent'] = config.getboolean(section_name, 'independent')
+            if config.has_option(section_name, "independent"):
+                section_config["independent"] = config.getboolean(
+                    section_name, "independent"
+                )
 
-            part_configs[section_value] = ThisVersionPartConfiguration(
-                **section_config
-            )
+            part_configs[section_value] = ThisVersionPartConfiguration(**section_config)
         elif section_type.get("file"):
             filename = section_value
 
@@ -360,9 +374,7 @@ def _load_configuration(config_file, explicit_config, defaults):
                 )
 
             if "search" not in section_config:
-                section_config["search"] = defaults.get(
-                    "search", "{current_version}"
-                )
+                section_config["search"] = defaults.get("search", "{current_version}")
 
             if "replace" not in section_config:
                 section_config["replace"] = defaults.get("replace", "{new_version}")
@@ -446,14 +458,16 @@ def _assemble_new_version(
         try:
             if current_version and positionals:
                 logger.info("Attempting to increment part '%s'", positionals[0])
-                new_version = current_version.bump(positionals[0], version_config.order())
+                new_version = current_version.bump(
+                    positionals[0], version_config.order()
+                )
                 logger.info("Values are now: %s", keyvaluestring(new_version._values))
                 defaults["new_version"] = version_config.serialize(new_version, context)
         except MissingValueForSerializationException as e:
             logger.info("Opportunistic finding of new_version failed: %s", e.message)
         except IncompleteVersionRepresentationException as e:
             logger.info("Opportunistic finding of new_version failed: %s", e.message)
-        except KeyError as e:
+        except KeyError:
             logger.info("Opportunistic finding of new_version failed")
     return new_version
 
@@ -635,7 +649,12 @@ def _log_list(config, new_version):
 
 
 def _update_config_file(
-        config, config_file, config_newlines, config_file_exists, new_version, dry_run,
+    config,
+    config_file,
+    config_newlines,
+    config_file_exists,
+    new_version,
+    dry_run,
 ):
     config.set("bumpversion", "current_version", new_version)
     new_config = io.StringIO()
@@ -652,7 +671,9 @@ def _update_config_file(
         logger.info(new_config.getvalue())
 
         if write_to_config_file:
-            with open(config_file, "wt", encoding="utf-8", newline=config_newlines) as f:
+            with open(
+                config_file, "wt", encoding="utf-8", newline=config_newlines
+            ) as f:
                 f.write(new_config.getvalue().strip() + "\n")
 
     except UnicodeEncodeError:
@@ -662,8 +683,16 @@ def _update_config_file(
         )
 
 
-def _commit_to_vcs(files, context, config_file, config_file_exists, vcs, args,
-                   current_version, new_version):
+def _commit_to_vcs(
+    files,
+    context,
+    config_file,
+    config_file_exists,
+    vcs,
+    args,
+    current_version,
+    new_version,
+):
     commit_files = [f.path for f in files]
     if config_file_exists:
         commit_files.append(config_file)
@@ -693,8 +722,10 @@ def _commit_to_vcs(files, context, config_file, config_file_exists, vcs, args,
     }
     context.update(time_context)
     context.update(prefixed_environ())
-    context.update({'current_' + part: current_version[part].value for part in current_version})
-    context.update({'new_' + part: new_version[part].value for part in new_version})
+    context.update(
+        {"current_" + part: current_version[part].value for part in current_version}
+    )
+    context.update({"new_" + part: new_version[part].value for part in new_version})
     context.update(special_char_context)
 
     commit_message = args.message.format(**context)

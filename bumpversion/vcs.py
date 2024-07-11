@@ -3,23 +3,22 @@ import logging
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
+from typing import List
 
 from bumpversion.exceptions import (
-    WorkingDirectoryIsDirtyException,
     MercurialDoesNotSupportSignedTagsException,
+    WorkingDirectoryIsDirtyException,
 )
-
 
 logger = logging.getLogger(__name__)
 
 
 class BaseVCS:
-
-    _TEST_USABLE_COMMAND = None
-    _COMMIT_COMMAND = None
+    _TEST_USABLE_COMMAND: List[str]
+    _COMMIT_COMMAND: List[str]
 
     @classmethod
-    def commit(cls, message, context, extra_args=None):
+    def commit(cls, message, context, extra_args=None) -> None:
         extra_args = extra_args or []
         with NamedTemporaryFile("wb", delete=False) as f:
             f.write(message.encode("utf-8"))
@@ -41,7 +40,7 @@ class BaseVCS:
             os.unlink(f.name)
 
     @classmethod
-    def is_usable(cls):
+    def is_usable(cls) -> bool:
         try:
             return (
                 subprocess.call(
@@ -58,12 +57,11 @@ class BaseVCS:
 
 
 class Git(BaseVCS):
-
     _TEST_USABLE_COMMAND = ["git", "rev-parse", "--git-dir"]
     _COMMIT_COMMAND = ["git", "commit", "-F"]
 
     @classmethod
-    def assert_nondirty(cls):
+    def assert_nondirty(cls) -> None:
         lines = [
             line.strip()
             for line in subprocess.check_output(
@@ -80,7 +78,7 @@ class Git(BaseVCS):
             )
 
     @classmethod
-    def latest_tag_info(cls):
+    def latest_tag_info(cls) -> dict:
         try:
             # git-describe doesn't update the git-index, so we do that
             subprocess.check_output(["git", "update-index", "--refresh"])
@@ -106,7 +104,7 @@ class Git(BaseVCS):
             logger.debug("Error when running git describe")
             return {}
 
-        info = {}
+        info: dict = {}
 
         if describe_out[-1].strip() == "dirty":
             info["dirty"] = True
@@ -119,11 +117,11 @@ class Git(BaseVCS):
         return info
 
     @classmethod
-    def add_path(cls, path):
-        subprocess.check_output(["git", "add", "--update", path])
+    def add_path(cls, path) -> None:
+        subprocess.check_output(["git", "add", "--update", "--ignore-errors", path])
 
     @classmethod
-    def tag(cls, sign, name, message):
+    def tag(cls, sign, name, message) -> None:
         """
         Create a tag of the new_version in VCS.
 
@@ -139,16 +137,15 @@ class Git(BaseVCS):
 
 
 class Mercurial(BaseVCS):
-
     _TEST_USABLE_COMMAND = ["hg", "root"]
     _COMMIT_COMMAND = ["hg", "commit", "--logfile"]
 
     @classmethod
-    def latest_tag_info(cls):
+    def latest_tag_info(cls) -> dict:
         return {}
 
     @classmethod
-    def assert_nondirty(cls):
+    def assert_nondirty(cls) -> None:
         lines = [
             line.strip()
             for line in subprocess.check_output(["hg", "status", "-mard"]).splitlines()
@@ -163,11 +160,11 @@ class Mercurial(BaseVCS):
             )
 
     @classmethod
-    def add_path(cls, path):
+    def add_path(cls, path) -> None:
         pass
 
     @classmethod
-    def tag(cls, sign, name, message):
+    def tag(cls, sign, name, message) -> None:
         command = ["hg", "tag", name]
         if sign:
             raise MercurialDoesNotSupportSignedTagsException(

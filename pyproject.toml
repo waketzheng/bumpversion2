@@ -21,6 +21,22 @@ bumpversion = "bumpversion:cli.main"
 [tool.poetry-version-plugin]
 source = "init"
 
+[tool.mypy]
+pretty = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.test_functions"]
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["tests.test_version_part"]
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["tests.test_cli"]
+check_untyped_defs = true
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
