@@ -10,10 +10,11 @@ defaults:
 
 jobs:
   test:
-    runs-on: [ubuntu-latest, windows-latest]
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.10"]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/cache@v4
         with:
