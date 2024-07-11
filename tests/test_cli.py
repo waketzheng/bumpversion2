@@ -1,4 +1,5 @@
 import argparse
+import traceback
 import logging
 import os
 import platform
@@ -2660,8 +2661,6 @@ message = XXX
     check_call([git, "add", "file1"])
     check_call([git, "commit", "-m", "initial commit"])
 
-    os.system("git --version")
-
     # If I add the bumpversion config, uncommitted
     tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
@@ -2670,13 +2669,7 @@ message = XXX
     try:
         main(["patch"])
     except:
-        import traceback
-
         traceback.print_exc()
-    with patch_loggers():
-        print("-" * 30)
-        print(caplog.text)
-        print("^" * 30)
     # And return the output of the failing command
     assert "Failed to run" in caplog.text
 

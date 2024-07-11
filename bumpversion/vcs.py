@@ -127,7 +127,7 @@ class Git(BaseVCS):
 
     @classmethod
     def add_path(cls, path):
-        subprocess.check_output(["git", "add", "--update", path])
+        subprocess.check_output(["git", "add", "--update", "--ignore-errors", path])
 
     @classmethod
     def tag(cls, sign, name, message):
