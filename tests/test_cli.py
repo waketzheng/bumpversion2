@@ -1,9 +1,7 @@
 import argparse
-import traceback
 import logging
 import os
 import platform
-import re
 import subprocess
 import sys
 import warnings
@@ -19,7 +17,7 @@ from typing import Generator, List
 from unittest import mock
 
 import pytest
-from testfixtures import LogCapture as _LogCapture
+from testfixtures import LogCapture
 
 import bumpversion
 from bumpversion import exceptions
@@ -52,7 +50,6 @@ def _get_subprocess_env():
 
 
 SUBPROCESS_ENV = _get_subprocess_env()
-RE_SPACE = re.compile(r"\s+")
 call = partial(subprocess.call, env=SUBPROCESS_ENV, shell=True)
 check_call = partial(subprocess.check_call, env=SUBPROCESS_ENV)
 check_output = partial(subprocess.check_output, env=SUBPROCESS_ENV)
@@ -70,10 +67,6 @@ VCS_GIT = pytest.param("git", marks=xfail_if_no_git())
 VCS_MERCURIAL = pytest.param("hg", marks=xfail_if_no_hg())
 COMMIT = "[bumpversion]\ncommit = True"
 COMMIT_NOT_TAG = "[bumpversion]\ncommit = True\ntag = False"
-
-
-def remove_space(s: str) -> str:
-    return RE_SPACE.sub("", s).strip()
 
 
 @pytest.fixture(params=[VCS_GIT, VCS_MERCURIAL])
@@ -113,19 +106,6 @@ def tmp_dir(tmp_path: Path) -> Generator[Path, None, None]:
         yield tmp_path
 
 
-class TextIO(StringIO):
-    @property
-    def text(self) -> str:
-        return self.getvalue()
-
-
-@contextmanager
-def capture_log():
-    cap = TextIO()
-    with redirect_stdout(cap):
-        yield cap
-
-
 try:
     RawConfigParser(empty_lines_in_values=False)
     using_old_configparser = False
@@ -148,8 +128,8 @@ def _mock_calls_to_string(called_mock) -> List[str]:
     ]
 
 
-class LogCapture(_LogCapture):
-    def __enter__(self) -> "LogCapture":
+class LogCapture2(LogCapture):
+    def __enter__(self) -> "LogCapture2":
         self.redirect = redirect_stdout(StringIO()).__enter__()
         return super().__enter__()
 
@@ -191,7 +171,7 @@ positional arguments:
   part                  Part of the version to be bumped.
   file                  Files to change (default: [])
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --config-file FILE    Config file to read most of the variables from
                         (default: .bumpversion.cfg)
@@ -236,19 +216,14 @@ optional arguments:
 ).lstrip()
 
 
-def show_diff(a: str, b: str) -> None:
-    c = b.replace("options:", "optional arguments:")
-    print(a)
-    print("=" * 20)
-    print(b)
-    print("^" * 20)
-    print(c)
-    print("#" * 20)
-    t1, t2, t3 = a, b, c
-    d = lambda x: Path(__file__).parent.parent / f"{x}.txt"  # noqa:E731
-    d(1).write_text(t1)
-    d(2).write_text(t2)
-    d(3).write_text(t3)
+def _maybe_out(out: str) -> str:
+    # Usage string have diff prompt in mac os
+    if EXPECTED_USAGE not in out:
+        a, b = ("options:", "optional arguments:")
+        if a not in out:
+            a, b = b, a
+        out = out.replace(a, b)
+    return out
 
 
 def test_usage_string(tmp_dir: Path, capsys) -> None:
@@ -260,17 +235,7 @@ def test_usage_string(tmp_dir: Path, capsys) -> None:
 
     for option_line in EXPECTED_OPTIONS:
         assert option_line in out, "Usage string is missing {}".format(option_line)
-    if EXPECTED_USAGE not in out:
-        expected_slim, out_slim = remove_space(EXPECTED_USAGE), remove_space(out)
-        a, b = ("options:", "optional arguments:")
-        if a not in out:
-            a, b = b, a
-        out_maybe = remove_space(out.replace(a, b))
-        if expected_slim not in out_slim and expected_slim not in out_maybe:
-            show_diff(EXPECTED_USAGE, out)
-        assert expected_slim in out_slim or expected_slim in out_maybe
-    else:
-        assert EXPECTED_USAGE in out
+    assert EXPECTED_USAGE in _maybe_out(out)
 
 
 def test_usage_string_fork(tmp_dir):
@@ -315,17 +280,7 @@ def test_regression_help_in_work_dir(tmp_dir, capsys, vcs):
     if vcs == "git":
         assert "Version that needs to be updated (default: 1.7.2013)" in out
     else:
-        if EXPECTED_USAGE not in out:
-            expected_slim, out_slim = remove_space(EXPECTED_USAGE), remove_space(out)
-            a, b = ("options:", "optional arguments:")
-            if a not in out:
-                a, b = b, a
-            out_maybe = remove_space(out.replace(a, b))
-            if expected_slim not in out_slim and expected_slim not in out_maybe:
-                show_diff(EXPECTED_USAGE, out)
-            assert expected_slim in out_slim or expected_slim in out_maybe
-        else:
-            assert EXPECTED_USAGE in out
+        assert EXPECTED_USAGE in _maybe_out(out)
 
 
 def test_defaults_in_usage_with_config(tmp_dir, capsys):
@@ -2665,11 +2620,9 @@ message = XXX
     tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     # I expect bumpversion patch to fail
-    # with pytest.raises(subprocess.CalledProcessError):
-    try:
+    with pytest.raises(subprocess.CalledProcessError):
         main(["patch"])
-    except:
-        traceback.print_exc()
+
     # And return the output of the failing command
     assert "Failed to run" in caplog.text
 
