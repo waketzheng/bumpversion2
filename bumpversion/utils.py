@@ -4,8 +4,12 @@ import re
 from argparse import _AppendAction
 from difflib import unified_diff
 from pathlib import Path
+from typing import TYPE_CHECKING, Dict, Optional
 
 from bumpversion.exceptions import VersionNotFoundException
+
+if TYPE_CHECKING:
+    from .version_part import Version
 
 logger = logging.getLogger(__name__)
 
@@ -23,20 +27,20 @@ class DiscardDefaultIfSpecifiedAppendAction(_AppendAction):
         super().__call__(parser, namespace, values, option_string=None)
 
 
-def keyvaluestring(d):
+def keyvaluestring(d: dict) -> str:
     return ", ".join("{}={}".format(k, v) for k, v in sorted(d.items()))
 
 
-def prefixed_environ():
+def prefixed_environ() -> Dict[str, str]:
     return {"${}".format(key): value for key, value in os.environ.items()}
 
 
 class ConfiguredFile:
-    def __init__(self, path, versionconfig):
+    def __init__(self, path, versionconfig) -> None:
         self.path = path
         self._versionconfig = versionconfig
 
-    def should_contain_version(self, version, context):
+    def should_contain_version(self, version, context) -> None:
         """
         Raise VersionNotFound if the version number isn't present in this file.
 
@@ -66,7 +70,7 @@ class ConfiguredFile:
             "Did not find '{}' in file: '{}'".format(search_expression, self.path)
         )
 
-    def contains(self, search):
+    def contains(self, search: Optional[str]) -> bool:
         if not search:
             return False
 
@@ -95,7 +99,13 @@ class ConfiguredFile:
                     return True
         return False
 
-    def replace(self, current_version, new_version, context, dry_run):
+    def replace(
+        self,
+        current_version: "Version",
+        new_version: "Version",
+        context: dict,
+        dry_run: bool,
+    ) -> None:
         with open(self.path, "rt", encoding="utf-8") as f:
             file_content_before = f.read()
             file_new_lines = f.newlines
@@ -147,11 +157,16 @@ class ConfiguredFile:
             )
 
         if not dry_run:
-            with open(self.path, "wt", encoding="utf-8", newline=file_new_lines) as f:
+            linesep = (
+                file_new_lines[0]
+                if isinstance(file_new_lines, tuple)
+                else file_new_lines
+            )
+            with open(self.path, "wt", encoding="utf-8", newline=linesep) as f:
                 f.write(file_content_after)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.path
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<bumpversion.ConfiguredFile:{}>".format(self.path)

@@ -1936,9 +1936,7 @@ def test_no_list_no_stdout(tmp_dir, vcs):
     check_call([vcs, "add", "please_dont_list_me.txt"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
-    output = run(
-        "bumpversion patch", shell=True, capture_output=True
-    ).stdout.decode("utf-8")
+    output = run("bumpversion patch", shell=True, capture_output=True).stdout.decode()
 
     assert output == ""
 

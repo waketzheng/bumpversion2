@@ -1,7 +1,7 @@
 import logging
 import re
 import string
-from typing import Type
+from typing import Iterator, Optional, Type
 
 from bumpversion.exceptions import (
     IncompleteVersionRepresentationException,
@@ -22,22 +22,22 @@ logger = logging.getLogger(__name__)
 class PartConfiguration:
     function_cls: Type[Function] = NumericFunction
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, **kwds) -> None:
         self.function = self.function_cls(*args, **kwds)
 
     @property
-    def first_value(self):
+    def first_value(self) -> str:
         return str(self.function.first_value)
 
     @property
-    def optional_value(self):
+    def optional_value(self) -> str:
         return str(self.function.optional_value)
 
     @property
-    def independent(self):
+    def independent(self) -> bool:
         return self.function.independent
 
-    def bump(self, value=None):
+    def bump(self, value=None) -> str:
         return self.function.bump(value)
 
 
@@ -57,7 +57,7 @@ class VersionPart:
     increased or reset.
     """
 
-    def __init__(self, value, config=None):
+    def __init__(self, value, config=None) -> None:
         self._value = value
 
         if config is None:
@@ -66,33 +66,33 @@ class VersionPart:
         self.config = config
 
     @property
-    def value(self):
+    def value(self) -> str:
         return self._value or self.config.optional_value
 
-    def copy(self):
+    def copy(self) -> "VersionPart":
         return VersionPart(self._value)
 
-    def bump(self):
+    def bump(self) -> "VersionPart":
         return VersionPart(self.config.bump(self.value), self.config)
 
-    def is_optional(self):
+    def is_optional(self) -> bool:
         return self.value == self.config.optional_value
 
-    def is_independent(self):
+    def is_independent(self) -> bool:
         return self.config.independent
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec) -> str:
         return self.value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<bumpversion.VersionPart:{}:{}>".format(
             self.config.__class__.__name__, self.value
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return self.value == other.value
 
-    def null(self):
+    def null(self) -> "VersionPart":
         return VersionPart(self.config.first_value, self.config)
 
 
@@ -104,16 +104,16 @@ class Version:
     def __getitem__(self, key):
         return self._values[key]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._values)
 
     def __iter__(self):
         return iter(self._values)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<bumpversion.Version:{}>".format(keyvaluestring(self._values))
 
-    def bump(self, part_name, order):
+    def bump(self, part_name, order) -> "Version":
         bumped = False
 
         new_values = {}
@@ -137,7 +137,7 @@ class Version:
         return new_version
 
 
-def labels_for_format(serialize_format):
+def labels_for_format(serialize_format) -> Iterator[str]:
     return (
         label for _, label, _, _ in string.Formatter().parse(serialize_format) if label
     )
@@ -148,7 +148,7 @@ class VersionConfig:
     Hold a complete representation of a version string.
     """
 
-    def __init__(self, parse, serialize, search, replace, part_configs=None):
+    def __init__(self, parse, serialize, search, replace, part_configs=None) -> None:
         try:
             self.parse_regex = re.compile(parse, re.VERBOSE)
         except sre_constants.error as e:
@@ -165,12 +165,12 @@ class VersionConfig:
         self.search = search
         self.replace = replace
 
-    def order(self):
+    def order(self) -> Iterator[str]:
         # currently, order depends on the first given serialization format
         # this seems like a good idea because this should be the most complete format
         return labels_for_format(self.serialize_formats[0])
 
-    def parse(self, version_string):
+    def parse(self, version_string) -> Optional[Version]:
         if not version_string:
             return None
 
@@ -204,7 +204,9 @@ class VersionConfig:
 
         return v
 
-    def _serialize(self, version, serialize_format, context, raise_if_incomplete=False):
+    def _serialize(
+        self, version, serialize_format, context, raise_if_incomplete=False
+    ) -> str:
         """
         Attempts to serialize a version with the given serialization format.
 
@@ -256,7 +258,7 @@ class VersionConfig:
 
         return serialized
 
-    def _choose_serialize_format(self, version, context):
+    def _choose_serialize_format(self, version: Version, context) -> str:
         chosen = None
 
         logger.debug(
@@ -269,9 +271,9 @@ class VersionConfig:
                     version, serialize_format, context, raise_if_incomplete=True
                 )
                 # Prefer shorter or first search expression.
-                chosen_part_count = (
-                    None if not chosen else len(list(string.Formatter().parse(chosen)))
-                )
+                chosen_part_count = None
+                if chosen:
+                    chosen_part_count = len(list(string.Formatter().parse(chosen)))
                 serialize_part_count = len(
                     list(string.Formatter().parse(serialize_format))
                 )
@@ -300,7 +302,7 @@ class VersionConfig:
 
         return chosen
 
-    def serialize(self, version, context):
+    def serialize(self, version, context) -> str:
         serialized = self._serialize(
             version, self._choose_serialize_format(version, context), context
         )

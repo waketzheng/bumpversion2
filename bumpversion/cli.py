@@ -71,7 +71,7 @@ OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES = [
 ]
 
 
-def main(original_args=None):
+def main(original_args=None) -> None:
     # determine configuration based on command-line arguments
     # and on-disk configuration files
     args, known_args, root_parser, positionals = _parse_arguments_phase_1(original_args)
@@ -625,7 +625,7 @@ def _determine_vcs_dirty(possible_vcses, defaults):
     return None
 
 
-def _check_files_contain_version(files, current_version, context):
+def _check_files_contain_version(files, current_version, context) -> None:
     # make sure files exist and contain version string
     logger.info(
         "Asserting files %s contain the version string...",
@@ -635,13 +635,15 @@ def _check_files_contain_version(files, current_version, context):
         f.should_contain_version(current_version, context)
 
 
-def _replace_version_in_files(files, current_version, new_version, dry_run, context):
+def _replace_version_in_files(
+    files, current_version, new_version, dry_run, context
+) -> None:
     # change version string in files
     for f in files:
         f.replace(current_version, new_version, context, dry_run)
 
 
-def _log_list(config, new_version):
+def _log_list(config, new_version) -> None:
     config.set("bumpversion", "new_version", new_version)
     for key, value in config.items("bumpversion"):
         logger_list.info("%s=%s", key, value)
@@ -655,7 +657,7 @@ def _update_config_file(
     config_file_exists,
     new_version,
     dry_run,
-):
+) -> None:
     config.set("bumpversion", "current_version", new_version)
     new_config = io.StringIO()
     try:
@@ -692,7 +694,7 @@ def _commit_to_vcs(
     args,
     current_version,
     new_version,
-):
+) -> dict:
     commit_files = [f.path for f in files]
     if config_file_exists:
         commit_files.append(config_file)
@@ -745,7 +747,7 @@ def _commit_to_vcs(
     return context
 
 
-def _tag_in_vcs(vcs, context, args):
+def _tag_in_vcs(vcs, context, args) -> None:
     sign_tags = args.sign_tags
     tag_name = args.tag_name.format(**context)
     tag_message = args.tag_message.format(**context)

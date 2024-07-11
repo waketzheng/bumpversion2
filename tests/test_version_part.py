@@ -45,8 +45,7 @@ def test_version_part_check_optional_true(confvpc):
 
 
 def test_version_part_format(confvpc):
-    assert "{}".format(
-        VersionPart(confvpc.first_value, confvpc)) == confvpc.first_value
+    assert "{}".format(VersionPart(confvpc.first_value, confvpc)) == confvpc.first_value
 
 
 def test_version_part_equality(confvpc):

@@ -2,6 +2,10 @@ import re
 
 
 class Function:
+    def __init__(self, first_value=None, independent=False) -> None:
+        self.optional_value = self.first_value = str(first_value)
+        self.independent = independent
+
     def bump(self, value):
         raise NotImplementedError
 
@@ -21,10 +25,10 @@ class NumericFunction(Function):
 
     FIRST_NUMERIC = re.compile(r"([^\d]*)(\d+)(.*)")
 
-    def __init__(self, first_value=None, independent=False):
+    def __init__(self, first_value=None, independent=False) -> None:
         if first_value is not None:
             try:
-                _, _, _ = self.FIRST_NUMERIC.search(first_value).groups()
+                _, _, _ = self.FIRST_NUMERIC.search(first_value).groups()  # type:ignore
             except AttributeError:
                 raise ValueError(
                     "The given first value {} does not contain any digit".format(
@@ -33,15 +37,11 @@ class NumericFunction(Function):
                 )
         else:
             first_value = 0
+        super().__init__(first_value, independent)
 
-        self.first_value = str(first_value)
-        self.optional_value = self.first_value
-        self.independent = independent
-
-    def bump(self, value):
-        part_prefix, part_numeric, part_suffix = self.FIRST_NUMERIC.search(
-            value
-        ).groups()
+    def bump(self, value: str) -> str:
+        match = self.FIRST_NUMERIC.search(value)
+        part_prefix, part_numeric, part_suffix = match.groups()  # type:ignore
         bumped_numeric = int(part_numeric) + 1
 
         return "".join([part_prefix, str(bumped_numeric), part_suffix])
@@ -62,7 +62,7 @@ class ValuesFunction(Function):
 
     def __init__(
         self, values, optional_value=None, first_value=None, independent=False
-    ):
+    ) -> None:
         if not values:
             raise ValueError("Version part values cannot be empty")
 
@@ -93,7 +93,7 @@ class ValuesFunction(Function):
         self.first_value = first_value
         self.independent = independent
 
-    def bump(self, value):
+    def bump(self, value) -> str:
         try:
             return self._values[self._values.index(value) + 1]
         except IndexError:
