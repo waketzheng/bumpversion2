@@ -1937,9 +1937,7 @@ def test_no_list_no_stdout(tmp_dir, vcs):
     check_call([vcs, "commit", "-m", "initial commit"])
 
     output = run(
-        ["bumpversion", "patch"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        "bumpversion patch", shell=True, capture_output=True
     ).stdout.decode("utf-8")
 
     assert output == ""
