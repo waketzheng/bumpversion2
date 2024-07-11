@@ -9,23 +9,19 @@ defaults:
     shell: bash
 
 jobs:
-
-  tox:
+  test:
     strategy:
-      fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
-        python-version:
-          - "3.8"
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "pypy-3"
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.10"]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -34,13 +30,20 @@ jobs:
         run: |
           git config --global user.email "bumpversion-test-git@github.actions"
           git config --global user.name "Testing Git on Travis CI"
+          git config --global --add safe.directory `pwd`
+          git config --global init.defaultBranch `git rev-parse --abbrev-ref HEAD`
           git --version
           git config --list
+          git fetch --tags
       - name: Check mercurial is working
         run: |
           echo -e '[ui]\nusername = Testing Mercurial on Travis CI <bumpversion-test-hg@travis.ci>' > ~/.hgrc
           hg --version
-      - name: Install test dependencies
-        run: pip install tox tox-gh-actions
-      - name: Run setup and tests as defined in tox.ini
-        run: tox
+      - name: Install and configure Poetry
+        run: |
+          pip install -U pip poetry
+          poetry config virtualenvs.create false
+          poetry self add poetry-version-plugin
+          poetry install
+      - name: Run tests
+        run: pytest -s -r a '[]' tests/ --import-mode importlib

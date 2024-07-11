@@ -3,13 +3,15 @@ import logging
 import os
 import platform
 import subprocess
+import sys
 import warnings
 from configparser import RawConfigParser
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
+from pathlib import Path
 from shlex import split as shlex_split
 from textwrap import dedent
-from unittest import mock
+from typing import Generator, List
 
 import pytest
 from testfixtures import LogCapture
@@ -17,6 +19,25 @@ from testfixtures import LogCapture
 import bumpversion
 from bumpversion import exceptions
 from bumpversion.cli import DESCRIPTION, main, split_args_in_optional_and_positional
+
+if sys.version_info >= (3, 11):
+    from contextlib import chdir
+else:
+    from contextlib import AbstractContextManager
+
+    class chdir(AbstractContextManager):  # copied from source code of Python3.11
+        """Non thread-safe context manager to change the current working directory."""
+
+        def __init__(self, path):
+            self.path = path
+            self._old_cwd = []
+
+        def __enter__(self):
+            self._old_cwd.append(os.getcwd())
+            os.chdir(self.path)
+
+        def __exit__(self, *excinfo):
+            os.chdir(self._old_cwd.pop())
 
 
 def _get_subprocess_env():
@@ -76,6 +97,12 @@ def file_keyword(request):
     return request.param
 
 
+@pytest.fixture
+def tmp_dir(tmp_path: Path) -> Generator[Path, None, None]:
+    with chdir(tmp_path):
+        yield tmp_path
+
+
 try:
     RawConfigParser(empty_lines_in_values=False)
     using_old_configparser = False
@@ -87,7 +114,7 @@ xfail_if_old_configparser = pytest.mark.xfail(
 )
 
 
-def _mock_calls_to_string(called_mock):
+def _mock_calls_to_string(called_mock) -> List[str]:
     return [
         "{}|{}|{}".format(
             name,
@@ -176,9 +203,17 @@ options:
 ).lstrip()
 
 
-def test_usage_string(tmpdir, capsys):
-    tmpdir.chdir()
+def _maybe_out(out: str) -> str:
+    # Usage string have diff prompt in mac os
+    if EXPECTED_USAGE not in out:
+        a, b = ("options:", "optional arguments:")
+        if a not in out:
+            a, b = b, a
+        out = out.replace(a, b)
+    return out
 
+
+def test_usage_string(tmp_dir: Path, capsys) -> None:
     with pytest.raises(SystemExit):
         main(["--help"])
 
@@ -187,15 +222,13 @@ def test_usage_string(tmpdir, capsys):
 
     for option_line in EXPECTED_OPTIONS:
         assert option_line in out, "Usage string is missing {}".format(option_line)
-    assert EXPECTED_USAGE in out
+    assert EXPECTED_USAGE in _maybe_out(out)
 
 
-def test_usage_string_fork(tmpdir):
-    tmpdir.chdir()
-
+def test_usage_string_fork(tmp_dir):
     if platform.system() == "Windows":
         # There are encoding problems on Windows with the encoding of →
-        tmpdir.join(".bumpversion.cfg").write(
+        tmp_dir.joinpath(".bumpversion.cfg").write_text(
             dedent("""
              [bumpversion]
              message: Bump version: {current_version} to {new_version}
@@ -204,19 +237,20 @@ def test_usage_string_fork(tmpdir):
         )
 
     try:
-        out = check_output("bumpversion --help", shell=True, stderr=subprocess.STDOUT)
+        output = check_output(
+            "bumpversion --help", shell=True, stderr=subprocess.STDOUT
+        )
     except subprocess.CalledProcessError as e:
-        out = e.output
+        output = e.output
 
-    if b"usage: bumpversion [-h]" not in out:
-        print(out)
+    if b"usage: bumpversion [-h]" not in output:
+        print(output)
 
-    assert b"usage: bumpversion [-h]" in out
+    assert b"usage: bumpversion [-h]" in output
 
 
-def test_regression_help_in_work_dir(tmpdir, capsys, vcs):
-    tmpdir.chdir()
-    tmpdir.join("some_source.txt").write("1.7.2013")
+def test_regression_help_in_work_dir(tmp_dir, capsys, vcs):
+    tmp_dir.joinpath("some_source.txt").write_text("1.7.2013")
     check_call([vcs, "init"])
     check_call([vcs, "add", "some_source.txt"])
     check_call([vcs, "commit", "-m", "initial commit"])
@@ -233,12 +267,11 @@ def test_regression_help_in_work_dir(tmpdir, capsys, vcs):
     if vcs == "git":
         assert "Version that needs to be updated (default: 1.7.2013)" in out
     else:
-        assert EXPECTED_USAGE in out
+        assert EXPECTED_USAGE in _maybe_out(out)
 
 
-def test_defaults_in_usage_with_config(tmpdir, capsys):
-    tmpdir.chdir()
-    tmpdir.join("my_defaults.cfg").write("""[bumpversion]
+def test_defaults_in_usage_with_config(tmp_dir, capsys):
+    tmp_dir.joinpath("my_defaults.cfg").write_text("""[bumpversion]
 current_version: 18
 new_version: 19
 [bumpversion:file:file1]
@@ -256,92 +289,84 @@ new_version: 19
     assert "[file ...]" in out
 
 
-def test_missing_explicit_config_file(tmpdir):
-    tmpdir.chdir()
+def test_missing_explicit_config_file(tmp_dir):
     with pytest.raises(argparse.ArgumentTypeError):
         main(["--config-file", "missing.cfg"])
 
 
-def test_simple_replacement(tmpdir):
-    tmpdir.join("VERSION").write("1.2.0")
-    tmpdir.chdir()
+def test_simple_replacement(tmp_dir):
+    tmp_dir.joinpath("VERSION").write_text("1.2.0")
     main(shlex_split("patch --current-version 1.2.0 --new-version 1.2.1 VERSION"))
-    assert "1.2.1" == tmpdir.join("VERSION").read()
+    assert "1.2.1" == tmp_dir.joinpath("VERSION").read_text()
 
 
-def test_simple_replacement_in_utf8_file(tmpdir):
-    tmpdir.join("VERSION").write("Kröt1.3.0".encode(), "wb")
-    tmpdir.chdir()
-    out = tmpdir.join("VERSION").read("rb")
-    main(
-        shlex_split(
-            "patch --verbose --current-version 1.3.0 --new-version 1.3.1 VERSION"
-        )
-    )
-    out = tmpdir.join("VERSION").read("rb")
+def test_simple_replacement_in_utf8_file(tmp_dir):
+    version_file = tmp_dir.joinpath("VERSION")
+    version_file.write_bytes("Kröt1.3.0".encode())
+    cmd = f"patch --verbose --current-version 1.3.0 --new-version 1.3.1 {version_file.name}"
+    main(shlex_split(cmd))
+    out = version_file.read_bytes()
     assert "'Kr\\xc3\\xb6t1.3.1'" in repr(out)
 
 
-def test_config_file(tmpdir):
-    tmpdir.join("file1").write("0.9.34")
-    tmpdir.join("my_bump_config.cfg").write("""[bumpversion]
+def test_config_file(tmp_dir):
+    tmp_dir.joinpath("file1").write_text("0.9.34")
+    tmp_dir.joinpath("my_bump_config.cfg").write_text("""[bumpversion]
 current_version: 0.9.34
 new_version: 0.9.35
 [bumpversion:file:file1]""")
 
-    tmpdir.chdir()
     main(shlex_split("patch --config-file my_bump_config.cfg"))
 
-    assert "0.9.35" == tmpdir.join("file1").read()
+    assert "0.9.35" == tmp_dir.joinpath("file1").read_text()
 
 
-def test_default_config_files(tmpdir, configfile):
-    tmpdir.join("file2").write("0.10.2")
-    tmpdir.join(configfile).write("""[bumpversion]
+def test_default_config_files(tmp_dir, configfile):
+    tmp_dir.joinpath("file2").write_text("0.10.2")
+    tmp_dir.joinpath(configfile).write_text("""[bumpversion]
 current_version: 0.10.2
 new_version: 0.10.3
 [bumpversion:file:file2]""")
 
-    tmpdir.chdir()
     main(["patch"])
 
-    assert "0.10.3" == tmpdir.join("file2").read()
+    assert "0.10.3" == tmp_dir.joinpath("file2").read_text()
 
 
-def test_glob_keyword(tmpdir, configfile):
-    tmpdir.join("file1.txt").write("0.9.34")
-    tmpdir.join("file2.txt").write("0.9.34")
-    tmpdir.join(configfile).write("""[bumpversion]
+def test_glob_keyword(tmp_dir, configfile):
+    tmp_dir.joinpath("file1.txt").write_text("0.9.34")
+    tmp_dir.joinpath("file2.txt").write_text("0.9.34")
+    tmp_dir.joinpath(configfile).write_text("""[bumpversion]
 current_version: 0.9.34
 new_version: 0.9.35
 [bumpversion:glob:*.txt]""")
 
-    tmpdir.chdir()
     main(["patch"])
-    assert "0.9.35" == tmpdir.join("file1.txt").read()
-    assert "0.9.35" == tmpdir.join("file2.txt").read()
+    assert "0.9.35" == tmp_dir.joinpath("file1.txt").read_text()
+    assert "0.9.35" == tmp_dir.joinpath("file2.txt").read_text()
 
 
-def test_glob_keyword_recursive(tmpdir, configfile):
-    tmpdir.mkdir("subdir").mkdir("subdir2")
-    file1 = tmpdir.join("subdir").join("file1.txt")
-    file1.write("0.9.34")
-    file2 = tmpdir.join("subdir").join("subdir2").join("file2.txt")
-    file2.write("0.9.34")
-    tmpdir.join(configfile).write("""[bumpversion]
+def test_glob_keyword_recursive(tmp_dir, configfile):
+    subdir = tmp_dir / "subdir"
+    subdir.mkdir()
+    subdir.joinpath("subdir2").mkdir()
+    file1 = subdir.joinpath("file1.txt")
+    file1.write_text("0.9.34")
+    file2 = subdir / "subdir2" / "file2.txt"
+    file2.write_text("0.9.34")
+    tmp_dir.joinpath(configfile).write_text("""[bumpversion]
 current_version: 0.9.34
 new_version: 0.9.35
 [bumpversion:glob:**/*.txt]""")
 
-    tmpdir.chdir()
     main(["patch"])
-    assert "0.9.35" == file1.read()
-    assert "0.9.35" == file2.read()
+    assert "0.9.35" == file1.read_text()
+    assert "0.9.35" == file2.read_text()
 
 
-def test_file_keyword_with_suffix_is_accepted(tmpdir, configfile, file_keyword):
-    tmpdir.join("file2").write("0.10.2")
-    tmpdir.join(configfile).write(
+def test_file_keyword_with_suffix_is_accepted(tmp_dir, configfile, file_keyword):
+    tmp_dir.joinpath("file2").write_text("0.10.2")
+    tmp_dir.joinpath(configfile).write_text(
         """[bumpversion]
     current_version: 0.10.2
     new_version: 0.10.3
@@ -350,30 +375,28 @@ def test_file_keyword_with_suffix_is_accepted(tmpdir, configfile, file_keyword):
         % file_keyword
     )
 
-    tmpdir.chdir()
     main(["patch"])
 
-    assert "0.10.3" == tmpdir.join("file2").read()
+    assert "0.10.3" == tmp_dir.joinpath("file2").read_text()
 
 
-def test_multiple_config_files(tmpdir):
-    tmpdir.join("file2").write("0.10.2")
-    tmpdir.join("setup.cfg").write("""[bumpversion]
+def test_multiple_config_files(tmp_dir):
+    tmp_dir.joinpath("file2").write_text("0.10.2")
+    tmp_dir.joinpath("setup.cfg").write_text("""[bumpversion]
 current_version: 0.10.2
 new_version: 0.10.3
 [bumpversion:file:file2]""")
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version: 0.10.2
 new_version: 0.10.4
 [bumpversion:file:file2]""")
 
-    tmpdir.chdir()
     main(["patch"])
 
-    assert "0.10.4" == tmpdir.join("file2").read()
+    assert "0.10.4" == tmp_dir.joinpath("file2").read_text()
 
 
-def test_single_file_processed_twice(tmpdir):
+def test_single_file_processed_twice(tmp_dir):
     """
     Verify that a single file "file2" can be processed twice.
 
@@ -382,12 +405,12 @@ def test_single_file_processed_twice(tmpdir):
     Employ different parse/serialize and search/replace configs
     to verify correct interpretation.
     """
-    tmpdir.join("file2").write("dots: 0.10.2\ndashes: 0-10-2")
-    tmpdir.join("setup.cfg").write("""[bumpversion]
+    tmp_dir.joinpath("file2").write_text("dots: 0.10.2\ndashes: 0-10-2")
+    tmp_dir.joinpath("setup.cfg").write_text("""[bumpversion]
 current_version: 0.10.2
 new_version: 0.10.3
 [bumpversion:file:file2]""")
-    tmpdir.join(".bumpversion.cfg").write(r"""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version: 0.10.2
 new_version: 0.10.4
 [bumpversion:file (version with dots):file2]
@@ -400,32 +423,28 @@ parse = (?P<major>\d+)-(?P<minor>\d+)-(?P<patch>\d+)
 serialize = {major}-{minor}-{patch}
 """)
 
-    tmpdir.chdir()
     main(["patch"])
 
-    assert "dots: 0.10.4\ndashes: 0-10-4" == tmpdir.join("file2").read()
+    assert "dots: 0.10.4\ndashes: 0-10-4" == tmp_dir.joinpath("file2").read_text()
 
 
-def test_config_file_is_updated(tmpdir):
-    tmpdir.join("file3").write("0.0.13")
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+def test_config_file_is_updated(tmp_dir):
+    tmp_dir.joinpath("file3").write_text("0.0.13")
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version: 0.0.13
 new_version: 0.0.14
 [bumpversion:file:file3]""")
 
-    tmpdir.chdir()
     main(["patch", "--verbose"])
 
     assert """[bumpversion]
 current_version = 0.0.14
 
 [bumpversion:file:file3]
-""" == tmpdir.join(".bumpversion.cfg").read()
+""" == tmp_dir.joinpath(".bumpversion.cfg").read_text()
 
 
-def test_dry_run(tmpdir, vcs):
-    tmpdir.chdir()
-
+def test_dry_run(tmp_dir, vcs):
     config = """[bumpversion]
 current_version = 0.12.0
 tag = True
@@ -436,8 +455,8 @@ message = DO NOT BUMP VERSIONS WITH THIS FILE
 
     version = "0.12.0"
 
-    tmpdir.join("file4").write(version)
-    tmpdir.join(".bumpversion.cfg").write(config)
+    tmp_dir.joinpath("file4").write_text(version)
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     check_call([vcs, "init"])
     check_call([vcs, "add", "file4"])
@@ -446,8 +465,8 @@ message = DO NOT BUMP VERSIONS WITH THIS FILE
 
     main(["patch", "--dry-run"])
 
-    assert config == tmpdir.join(".bumpversion.cfg").read()
-    assert version == tmpdir.join("file4").read()
+    assert config == tmp_dir.joinpath(".bumpversion.cfg").read_text()
+    assert version == tmp_dir.joinpath("file4").read_text()
 
     vcs_log = check_output([vcs, "log"]).decode("utf-8")
 
@@ -455,9 +474,7 @@ message = DO NOT BUMP VERSIONS WITH THIS FILE
     assert "DO NOT" not in vcs_log
 
 
-def test_dry_run_verbose_log(tmpdir, vcs):
-    tmpdir.chdir()
-
+def test_dry_run_verbose_log(tmp_dir, vcs):
     version = "0.12.0"
     patch = "0.12.1"
     v_parts = version.split(".")
@@ -475,8 +492,8 @@ message = {message}
 """.format(version=version, file=file, message=message)
 
     bumpcfg = ".bumpversion.cfg"
-    tmpdir.join(file).write(version)
-    tmpdir.join(bumpcfg).write(config)
+    tmp_dir.joinpath(file).write_text(version)
+    tmp_dir.joinpath(bumpcfg).write_text(config)
 
     check_call([vcs, "init"])
     check_call([vcs, "add", file])
@@ -601,17 +618,15 @@ message = {message}
     )
 
 
-def test_bump_version(tmpdir):
-    tmpdir.join("file5").write("1.0.0")
-    tmpdir.chdir()
+def test_bump_version(tmp_dir):
+    tmp_dir.joinpath("file5").write_text("1.0.0")
     main(["patch", "--current-version", "1.0.0", "file5"])
 
-    assert "1.0.1" == tmpdir.join("file5").read()
+    assert "1.0.1" == tmp_dir.joinpath("file5").read_text()
 
 
-def test_bump_version_custom_main(tmpdir):
-    tmpdir.join("file6").write("XXX1;0;0")
-    tmpdir.chdir()
+def test_bump_version_custom_main(tmp_dir):
+    tmp_dir.joinpath("file6").write_text("XXX1;0;0")
     main(
         [
             "--current-version",
@@ -625,14 +640,13 @@ def test_bump_version_custom_main(tmpdir):
         ]
     )
 
-    assert "XXX1;1;0" == tmpdir.join("file6").read()
+    assert "XXX1;1;0" == tmp_dir.joinpath("file6").read_text()
 
 
-def test_bump_version_custom_parse_serialize_configfile(tmpdir):
-    tmpdir.join("file12").write("ZZZ8;0;0")
-    tmpdir.chdir()
+def test_bump_version_custom_parse_serialize_configfile(tmp_dir):
+    tmp_dir.joinpath("file12").write_text("ZZZ8;0;0")
 
-    tmpdir.join(".bumpversion.cfg").write(r"""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version = ZZZ8;0;0
 serialize = ZZZ{spam};{blob};{slurp}
 parse = ZZZ(?P<spam>\d+);(?P<blob>\d+);(?P<slurp>\d+)
@@ -641,12 +655,11 @@ parse = ZZZ(?P<spam>\d+);(?P<blob>\d+);(?P<slurp>\d+)
 
     main(["blob"])
 
-    assert "ZZZ8;1;0" == tmpdir.join("file12").read()
+    assert "ZZZ8;1;0" == tmp_dir.joinpath("file12").read_text()
 
 
-def test_bumpversion_custom_parse_semver(tmpdir):
-    tmpdir.join("file15").write("XXX1.1.7-master+allan1")
-    tmpdir.chdir()
+def test_bumpversion_custom_parse_semver(tmp_dir):
+    tmp_dir.joinpath("file15").write_text("XXX1.1.7-master+allan1")
     main(
         [
             "--current-version",
@@ -660,22 +673,20 @@ def test_bumpversion_custom_parse_semver(tmpdir):
         ]
     )
 
-    assert "XXX1.1.7-master+allan2" == tmpdir.join("file15").read()
+    assert "XXX1.1.7-master+allan2" == tmp_dir.joinpath("file15").read_text()
 
 
-def test_bump_version_missing_part(tmpdir):
-    tmpdir.join("file5").write("1.0.0")
-    tmpdir.chdir()
+def test_bump_version_missing_part(tmp_dir):
+    tmp_dir.joinpath("file5").write_text("1.0.0")
     with pytest.raises(
         exceptions.InvalidVersionPartException, match="No part named 'bugfix'"
     ):
         main(["bugfix", "--current-version", "1.0.0", "file5"])
 
 
-def test_dirty_work_dir(tmpdir, vcs):
-    tmpdir.chdir()
+def test_dirty_work_dir(tmp_dir, vcs):
     check_call([vcs, "init"])
-    tmpdir.join("dirty").write("i'm dirty")
+    tmp_dir.joinpath("dirty").write_text("i'm dirty")
 
     check_call([vcs, "add", "dirty"])
     vcs_name = "Mercurial" if vcs == "hg" else "Git"
@@ -699,36 +710,33 @@ def test_dirty_work_dir(tmpdir, vcs):
     )
 
 
-def test_force_dirty_work_dir(tmpdir, vcs):
-    tmpdir.chdir()
+def test_force_dirty_work_dir(tmp_dir, vcs):
     check_call([vcs, "init"])
-    tmpdir.join("dirty2").write("i'm dirty! 1.1.1")
+    tmp_dir.joinpath("dirty2").write_text("i'm dirty! 1.1.1")
 
     check_call([vcs, "add", "dirty2"])
 
     main(["patch", "--allow-dirty", "--current-version", "1.1.1", "dirty2"])
 
-    assert "i'm dirty! 1.1.2" == tmpdir.join("dirty2").read()
+    assert "i'm dirty! 1.1.2" == tmp_dir.joinpath("dirty2").read_text()
 
 
-def test_bump_major(tmpdir):
-    tmpdir.join("fileMAJORBUMP").write("4.2.8")
-    tmpdir.chdir()
+def test_bump_major(tmp_dir):
+    tmp_dir.joinpath("fileMAJORBUMP").write_text("4.2.8")
     main(["--current-version", "4.2.8", "major", "fileMAJORBUMP"])
 
-    assert "5.0.0" == tmpdir.join("fileMAJORBUMP").read()
+    assert "5.0.0" == tmp_dir.joinpath("fileMAJORBUMP").read_text()
 
 
-def test_commit_and_tag(tmpdir, vcs):
-    tmpdir.chdir()
+def test_commit_and_tag(tmp_dir, vcs):
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("47.1.1")
+    tmp_dir.joinpath("VERSION").write_text("47.1.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["patch", "--current-version", "47.1.1", "--commit", "VERSION"])
 
-    assert "47.1.2" == tmpdir.join("VERSION").read()
+    assert "47.1.2" == tmp_dir.joinpath("VERSION").read_text()
 
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
 
@@ -742,7 +750,7 @@ def test_commit_and_tag(tmpdir, vcs):
 
     main(["patch", "--current-version", "47.1.2", "--commit", "--tag", "VERSION"])
 
-    assert "47.1.3" == tmpdir.join("VERSION").read()
+    assert "47.1.3" == tmp_dir.joinpath("VERSION").read_text()
 
     check_output([vcs, "log", "-p"])
 
@@ -751,22 +759,18 @@ def test_commit_and_tag(tmpdir, vcs):
     assert b"v47.1.3" in tag_out
 
 
-def test_commit_and_tag_with_configfile(tmpdir, vcs):
-    tmpdir.chdir()
-
-    tmpdir.join(".bumpversion.cfg").write(
-        """[bumpversion]\ncommit = True\ntag = True"""
-    )
+def test_commit_and_tag_with_configfile(tmp_dir, vcs):
+    cfg_file = tmp_dir.joinpath(".bumpversion.cfg")
+    cfg_file.write_text("""[bumpversion]\ncommit = True\ntag = True""")
 
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("48.1.1")
+    tmp_dir.joinpath("VERSION").write_text("48.1.1")
     check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", cfg_file.name])
     check_call([vcs, "commit", "-m", "initial commit"])
-
     main(["patch", "--current-version", "48.1.1", "--no-tag", "VERSION"])
 
-    assert "48.1.2" == tmpdir.join("VERSION").read()
-
+    assert "48.1.2" == tmp_dir.joinpath("VERSION").read_text()
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
 
     assert "-48.1.1" in log
@@ -779,7 +783,7 @@ def test_commit_and_tag_with_configfile(tmpdir, vcs):
 
     main(["patch", "--current-version", "48.1.2", "VERSION"])
 
-    assert "48.1.3" == tmpdir.join("VERSION").read()
+    assert "48.1.3" == tmp_dir.joinpath("VERSION").read_text()
 
     check_output([vcs, "log", "-p"])
 
@@ -789,19 +793,18 @@ def test_commit_and_tag_with_configfile(tmpdir, vcs):
 
 
 @pytest.mark.parametrize("config", [COMMIT, COMMIT_NOT_TAG])
-def test_commit_and_not_tag_with_configfile(tmpdir, vcs, config):
-    tmpdir.chdir()
-
-    tmpdir.join(".bumpversion.cfg").write(config)
+def test_commit_and_not_tag_with_configfile(tmp_dir, vcs, config):
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("48.1.1")
+    tmp_dir.joinpath("VERSION").write_text("48.1.1")
     check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["patch", "--current-version", "48.1.1", "VERSION"])
 
-    assert "48.1.2" == tmpdir.join("VERSION").read()
+    assert "48.1.2" == tmp_dir.joinpath("VERSION").read_text()
 
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
 
@@ -814,22 +817,20 @@ def test_commit_and_not_tag_with_configfile(tmpdir, vcs, config):
     assert b"v48.1.2" not in tag_out
 
 
-def test_commit_explicitly_false(tmpdir, vcs):
-    tmpdir.chdir()
-
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+def test_commit_explicitly_false(tmp_dir, vcs):
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version: 10.0.0
 commit = False
 tag = False""")
 
     check_call([vcs, "init"])
-    tmpdir.join("tracked_file").write("10.0.0")
+    tmp_dir.joinpath("tracked_file").write_text("10.0.0")
     check_call([vcs, "add", "tracked_file"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["patch", "tracked_file"])
 
-    assert "10.0.1" == tmpdir.join("tracked_file").read()
+    assert "10.0.1" == tmp_dir.joinpath("tracked_file").read_text()
 
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
     assert "10.0.1" not in log
@@ -838,21 +839,19 @@ tag = False""")
     assert "10.0.1" in diff
 
 
-def test_commit_configfile_true_cli_false_override(tmpdir, vcs):
-    tmpdir.chdir()
-
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+def test_commit_configfile_true_cli_false_override(tmp_dir, vcs):
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version: 27.0.0
 commit = True""")
 
     check_call([vcs, "init"])
-    tmpdir.join("dont_commit_file").write("27.0.0")
+    tmp_dir.joinpath("dont_commit_file").write_text("27.0.0")
     check_call([vcs, "add", "dont_commit_file"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["patch", "--no-commit", "dont_commit_file"])
 
-    assert "27.0.1" == tmpdir.join("dont_commit_file").read()
+    assert "27.0.1" == tmp_dir.joinpath("dont_commit_file").read_text()
 
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
     assert "27.0.1" not in log
@@ -861,9 +860,8 @@ commit = True""")
     assert "27.0.1" in diff
 
 
-def test_bump_version_environment(tmpdir):
-    tmpdir.join("on_jenkins").write("2.3.4")
-    tmpdir.chdir()
+def test_bump_version_environment(tmp_dir):
+    tmp_dir.joinpath("on_jenkins").write_text("2.3.4")
     os.environ["BUILD_NUMBER"] = "567"
     main(
         [
@@ -880,13 +878,12 @@ def test_bump_version_environment(tmpdir):
     )
     del os.environ["BUILD_NUMBER"]
 
-    assert "2.3.5.pre567" == tmpdir.join("on_jenkins").read()
+    assert "2.3.5.pre567" == tmp_dir.joinpath("on_jenkins").read_text()
 
 
-def test_current_version_from_tag(tmpdir, git):
+def test_current_version_from_tag(tmp_dir, git):
     # prepare
-    tmpdir.join("update_from_tag").write("26.6.0")
-    tmpdir.chdir()
+    tmp_dir.joinpath("update_from_tag").write_text("26.6.0")
     check_call([git, "init"])
     check_call([git, "add", "update_from_tag"])
     check_call([git, "commit", "-m", "initial"])
@@ -895,18 +892,18 @@ def test_current_version_from_tag(tmpdir, git):
     # don't give current-version, that should come from tag
     main(["patch", "update_from_tag"])
 
-    assert "26.6.1" == tmpdir.join("update_from_tag").read()
+    assert "26.6.1" == tmp_dir.joinpath("update_from_tag").read_text()
 
 
-def test_current_version_from_tag_written_to_config_file(tmpdir, git):
+def test_current_version_from_tag_written_to_config_file(tmp_dir, git):
     # prepare
-    tmpdir.join("updated_also_in_config_file").write("14.6.0")
-    tmpdir.chdir()
+    tmp_dir.joinpath("updated_also_in_config_file").write_text("14.6.0")
 
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]""")
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]""")
 
     check_call([git, "init"])
     check_call([git, "add", "updated_also_in_config_file"])
+    check_call([git, "add", ".bumpversion.cfg"])
     check_call([git, "commit", "-m", "initial"])
     check_call([git, "tag", "v14.6.0"])
 
@@ -920,14 +917,13 @@ def test_current_version_from_tag_written_to_config_file(tmpdir, git):
         ]
     )
 
-    assert "14.6.1" == tmpdir.join("updated_also_in_config_file").read()
-    assert "14.6.1" in tmpdir.join(".bumpversion.cfg").read()
+    assert "14.6.1" == tmp_dir.joinpath("updated_also_in_config_file").read_text()
+    assert "14.6.1" in tmp_dir.joinpath(".bumpversion.cfg").read_text()
 
 
-def test_distance_to_latest_tag_as_part_of_new_version(tmpdir, git):
+def test_distance_to_latest_tag_as_part_of_new_version(tmp_dir, git):
     # prepare
-    tmpdir.join("my_source_file").write("19.6.0")
-    tmpdir.chdir()
+    tmp_dir.joinpath("my_source_file").write_text("19.6.0")
 
     check_call([git, "init"])
     check_call([git, "add", "my_source_file"])
@@ -949,20 +945,19 @@ def test_distance_to_latest_tag_as_part_of_new_version(tmpdir, git):
         ]
     )
 
-    assert "19.6.1-pre3" == tmpdir.join("my_source_file").read()
+    assert "19.6.1-pre3" == tmp_dir.joinpath("my_source_file").read_text()
 
 
-def test_override_vcs_current_version(tmpdir, git):
+def test_override_vcs_current_version(tmp_dir, git):
     # prepare
-    tmpdir.join("contains_actual_version").write("6.7.8")
-    tmpdir.chdir()
+    tmp_dir.joinpath("contains_actual_version").write_text("6.7.8")
     check_call([git, "init"])
     check_call([git, "add", "contains_actual_version"])
     check_call([git, "commit", "-m", "initial"])
     check_call([git, "tag", "v6.7.8"])
 
     # update file
-    tmpdir.join("contains_actual_version").write("7.0.0")
+    tmp_dir.joinpath("contains_actual_version").write_text("7.0.0")
     check_call([git, "add", "contains_actual_version"])
 
     # but forgot to tag or forgot to push --tags
@@ -972,11 +967,10 @@ def test_override_vcs_current_version(tmpdir, git):
     # "AssertionError: Did not find string 6.7.8 in file contains_actual_version"
     main(["patch", "--current-version", "7.0.0", "contains_actual_version"])
 
-    assert "7.0.1" == tmpdir.join("contains_actual_version").read()
+    assert "7.0.1" == tmp_dir.joinpath("contains_actual_version").read_text()
 
 
-def test_non_existing_file(tmpdir):
-    tmpdir.chdir()
+def test_non_existing_file(tmp_dir):
     with pytest.raises(IOError):
         main(
             shlex_split(
@@ -985,9 +979,8 @@ def test_non_existing_file(tmpdir):
         )
 
 
-def test_non_existing_second_file(tmpdir):
-    tmpdir.chdir()
-    tmpdir.join("my_source_code.txt").write("1.2.3")
+def test_non_existing_second_file(tmp_dir):
+    tmp_dir.joinpath("my_source_code.txt").write_text("1.2.3")
     with pytest.raises(IOError):
         main(
             shlex_split(
@@ -996,13 +989,12 @@ def test_non_existing_second_file(tmpdir):
         )
 
     # first file is unchanged because second didn't exist
-    assert "1.2.3" == tmpdir.join("my_source_code.txt").read()
+    assert "1.2.3" == tmp_dir.joinpath("my_source_code.txt").read_text()
 
 
-def test_read_version_tags_only(tmpdir, git):
+def test_read_version_tags_only(tmp_dir, git):
     # prepare
-    tmpdir.join("update_from_tag").write("29.6.0")
-    tmpdir.chdir()
+    tmp_dir.joinpath("update_from_tag").write_text("29.6.0")
     check_call([git, "init"])
     check_call([git, "add", "update_from_tag"])
     check_call([git, "commit", "-m", "initial"])
@@ -1013,13 +1005,12 @@ def test_read_version_tags_only(tmpdir, git):
     # don't give current-version, that should come from tag
     main(["patch", "update_from_tag"])
 
-    assert "29.6.1" == tmpdir.join("update_from_tag").read()
+    assert "29.6.1" == tmp_dir.joinpath("update_from_tag").read_text()
 
 
-def test_tag_name(tmpdir, vcs):
-    tmpdir.chdir()
+def test_tag_name(tmp_dir, vcs):
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("31.1.1")
+    tmp_dir.joinpath("VERSION").write_text("31.1.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
@@ -1041,20 +1032,19 @@ def test_tag_name(tmpdir, vcs):
     assert b"ReleasedVersion-31.1.2" in tag_out
 
 
-def test_message_from_config_file(tmpdir, vcs):
-    tmpdir.chdir()
-    check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("400.0.0")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+def test_message_from_config_file(tmp_dir, vcs):
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version: 400.0.0
 new_version: 401.0.0
 commit: True
 tag: True
 message: {current_version} was old, {new_version} is new
 tag_name: from-{current_version}-to-{new_version}""")
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("400.0.0")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
 
@@ -1067,7 +1057,7 @@ tag_name: from-{current_version}-to-{new_version}""")
     assert b"from-400.0.0-to-401.0.0" in tag_out
 
 
-def test_all_parts_in_message_and_serialize_and_tag_name_from_config_file(tmpdir, vcs):
+def test_all_parts_in_message_and_serialize_and_tag_name_from_config_file(tmp_dir, vcs):
     """
     Ensure that major/minor/patch *and* custom parts can be used everywhere.
 
@@ -1078,13 +1068,7 @@ def test_all_parts_in_message_and_serialize_and_tag_name_from_config_file(tmpdir
     In message and tag_name, also ensure that new_version and
     current_version are correct.
     """
-    tmpdir.chdir()
-    check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("400.1.2.101")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
-    tmpdir.join(".bumpversion.cfg").write(r"""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version: 400.1.2.101
 new_version: 401.2.3.102
 parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+).(?P<custom>\d+)
@@ -1096,6 +1080,11 @@ tag_name: from-{current_version}-aka-{current_major}.{current_minor}.{current_pa
 
 [bumpversion:part:custom]
 """)
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("400.1.2.101")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
 
@@ -1111,17 +1100,12 @@ tag_name: from-{current_version}-aka-{current_major}.{current_minor}.{current_pa
     )
 
 
-def test_all_parts_in_replace_from_config_file(tmpdir, vcs):
+def test_all_parts_in_replace_from_config_file(tmp_dir, vcs):
     """
     Ensure that major/minor/patch *and* custom parts can be used in 'replace'.
     """
-    tmpdir.chdir()
-    check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("my version is 400.1.2.101\n")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
 
-    tmpdir.join(".bumpversion.cfg").write(r"""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version: 400.1.2.101
 new_version: 401.2.3.102
 parse = (?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+).(?P<custom>\d+)
@@ -1134,16 +1118,20 @@ tag: False
 [bumpversion:VERSION]
 search = my version is {current_version}
 replace = my version is {new_major}.{new_minor}.{new_patch}.{new_custom}""")
+    tmp_dir.joinpath("VERSION").write_text("my version is 400.1.2.101\n")
+    check_call([vcs, "init"])
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
     log = check_output([vcs, "log", "-p"])
     assert b"+my version is 401.2.3.102" in log
 
 
-def test_unannotated_tag(tmpdir, vcs):
-    tmpdir.chdir()
+def test_unannotated_tag(tmp_dir, vcs):
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("42.3.1")
+    tmp_dir.joinpath("VERSION").write_text("42.3.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
@@ -1173,10 +1161,9 @@ def test_unannotated_tag(tmpdir, vcs):
         assert describe_out.startswith(b"ReleasedVersion-42.3.2")
 
 
-def test_annotated_tag(tmpdir, vcs):
-    tmpdir.chdir()
+def test_annotated_tag(tmp_dir, vcs):
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("42.4.1")
+    tmp_dir.joinpath("VERSION").write_text("42.4.1")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
@@ -1192,7 +1179,7 @@ def test_annotated_tag(tmpdir, vcs):
             "test {new_version}-tag",
         ]
     )
-    assert "42.4.2" == tmpdir.join("VERSION").read()
+    assert "42.4.2" == tmp_dir.joinpath("VERSION").read_text()
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
     assert b"v42.4.2" in tag_out
@@ -1211,10 +1198,9 @@ def test_annotated_tag(tmpdir, vcs):
         raise ValueError("Unknown VCS")
 
 
-def test_vcs_describe(tmpdir, git):
-    tmpdir.chdir()
+def test_vcs_describe(tmp_dir, git):
     check_call([git, "init"])
-    tmpdir.join("VERSION").write("42.5.1")
+    tmp_dir.joinpath("VERSION").write_text("42.5.1")
     check_call([git, "add", "VERSION"])
     check_call([git, "commit", "-m", "initial commit"])
 
@@ -1230,7 +1216,7 @@ def test_vcs_describe(tmpdir, git):
             "test {new_version}-tag",
         ]
     )
-    assert "42.5.2" == tmpdir.join("VERSION").read()
+    assert "42.5.2" == tmp_dir.joinpath("VERSION").read_text()
 
     describe_out = subprocess.check_output([git, "describe"])
     assert b"v42.5.2\n" == describe_out
@@ -1249,7 +1235,7 @@ def test_vcs_describe(tmpdir, git):
             "",
         ]
     )
-    assert "42.5.3" == tmpdir.join("VERSION").read()
+    assert "42.5.3" == tmp_dir.joinpath("VERSION").read_text()
 
     describe_only_annotated_out = subprocess.check_output([git, "describe"])
     assert describe_only_annotated_out.startswith(b"v42.5.2-1-g")
@@ -1269,42 +1255,42 @@ except ImportError:
     not config_parser_handles_utf8,
     reason="old ConfigParser uses non-utf-8-strings internally",
 )
-def test_utf8_message_from_config_file(tmpdir, vcs):
-    tmpdir.chdir()
-    check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("500.0.0")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
+def test_utf8_message_from_config_file(tmp_dir, vcs):
     initial_config = """[bumpversion]
 current_version = 500.0.0
 commit = True
 message = Nová verze: {current_version} ☃, {new_version} ☀
 """
 
-    tmpdir.join(".bumpversion.cfg").write(initial_config.encode("utf-8"), mode="wb")
+    tmp_dir.joinpath(".bumpversion.cfg").write_bytes(initial_config.encode("utf-8"))
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("500.0.0")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
+
     main(["major", "VERSION"])
     check_output([vcs, "log", "-p"])
     expected_new_config = initial_config.replace("500", "501")
-    assert expected_new_config.encode() == tmpdir.join(".bumpversion.cfg").read(
-        mode="rb"
+    assert (
+        expected_new_config.encode()
+        == tmp_dir.joinpath(".bumpversion.cfg").read_bytes()
     )
 
 
-def test_utf8_message_from_config_file_2(tmpdir, vcs):
-    tmpdir.chdir()
-    check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("10.10.0")
-    check_call([vcs, "add", "VERSION"])
-    check_call([vcs, "commit", "-m", "initial commit"])
-
+def test_utf8_message_from_config_file_2(tmp_dir, vcs):
     initial_config = """[bumpversion]
 current_version = 10.10.0
 commit = True
 message = [{now}] [{utcnow} {utcnow:%YXX%mYY%d}]
 
 """
-    tmpdir.join(".bumpversion.cfg").write(initial_config)
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(initial_config)
+    check_call([vcs, "init"])
+    tmp_dir.joinpath("VERSION").write_text("10.10.0")
+    check_call([vcs, "add", "VERSION"])
+    check_call([vcs, "add", ".bumpversion.cfg"])
+    check_call([vcs, "commit", "-m", "initial commit"])
 
     main(["major", "VERSION"])
 
@@ -1316,35 +1302,33 @@ message = [{now}] [{utcnow} {utcnow:%YXX%mYY%d}]
     assert b"YY" in log
 
 
-def test_commit_and_tag_from_below_vcs_root(tmpdir, vcs, monkeypatch):
-    tmpdir.chdir()
+def test_commit_and_tag_from_below_vcs_root(tmp_dir, vcs, monkeypatch):
     check_call([vcs, "init"])
-    tmpdir.join("VERSION").write("30.0.3")
+    tmp_dir.joinpath("VERSION").write_text("30.0.3")
     check_call([vcs, "add", "VERSION"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
-    tmpdir.mkdir("subdir")
-    monkeypatch.chdir(tmpdir.join("subdir"))
+    subdir = tmp_dir.joinpath("subdir")
+    subdir.mkdir()
+    monkeypatch.chdir(subdir)
 
     main(["major", "--current-version", "30.0.3", "--commit", "../VERSION"])
 
-    assert "31.0.0" == tmpdir.join("VERSION").read()
+    assert "31.0.0" == tmp_dir.joinpath("VERSION").read_text()
 
 
-def test_non_vcs_operations_if_vcs_is_not_installed(tmpdir, vcs, monkeypatch):
+def test_non_vcs_operations_if_vcs_is_not_installed(tmp_dir, vcs, monkeypatch):
     monkeypatch.setenv("PATH", "")
 
-    tmpdir.chdir()
-    tmpdir.join("VERSION").write("31.0.3")
+    tmp_dir.joinpath("VERSION").write_text("31.0.3")
 
     main(["major", "--current-version", "31.0.3", "VERSION"])
 
-    assert "32.0.0" == tmpdir.join("VERSION").read()
+    assert "32.0.0" == tmp_dir.joinpath("VERSION").read_text()
 
 
-def test_serialize_newline(tmpdir):
-    tmpdir.join("file_new_line").write("MAJOR=31\nMINOR=0\nPATCH=3\n")
-    tmpdir.chdir()
+def test_serialize_newline(tmp_dir):
+    tmp_dir.joinpath("file_new_line").write_text("MAJOR=31\nMINOR=0\nPATCH=3\n")
     main(
         [
             "--current-version",
@@ -1358,12 +1342,13 @@ def test_serialize_newline(tmpdir):
             "file_new_line",
         ]
     )
-    assert "MAJOR=32\nMINOR=0\nPATCH=0\n" == tmpdir.join("file_new_line").read()
+    assert (
+        "MAJOR=32\nMINOR=0\nPATCH=0\n" == tmp_dir.joinpath("file_new_line").read_text()
+    )
 
 
-def test_multiple_serialize_three_part(tmpdir):
-    tmpdir.join("fileA").write("Version: 0.9")
-    tmpdir.chdir()
+def test_multiple_serialize_three_part(tmp_dir):
+    tmp_dir.joinpath("fileA").write_text("Version: 0.9")
     main(
         [
             "--current-version",
@@ -1382,12 +1367,11 @@ def test_multiple_serialize_three_part(tmpdir):
         ]
     )
 
-    assert "Version: 1" == tmpdir.join("fileA").read()
+    assert "Version: 1" == tmp_dir.joinpath("fileA").read_text()
 
 
-def test_multiple_serialize_two_part(tmpdir):
-    tmpdir.join("fileB").write("0.9")
-    tmpdir.chdir()
+def test_multiple_serialize_two_part(tmp_dir):
+    tmp_dir.joinpath("fileB").write_text("0.9")
     main(
         [
             "--current-version",
@@ -1403,12 +1387,11 @@ def test_multiple_serialize_two_part(tmpdir):
         ]
     )
 
-    assert "0.10" == tmpdir.join("fileB").read()
+    assert "0.10" == tmp_dir.joinpath("fileB").read_text()
 
 
-def test_multiple_serialize_two_part_patch(tmpdir):
-    tmpdir.join("fileC").write("0.7")
-    tmpdir.chdir()
+def test_multiple_serialize_two_part_patch(tmp_dir):
+    tmp_dir.joinpath("fileC").write_text("0.7")
     main(
         [
             "--current-version",
@@ -1424,14 +1407,13 @@ def test_multiple_serialize_two_part_patch(tmpdir):
         ]
     )
 
-    assert "0.7.1" == tmpdir.join("fileC").read()
+    assert "0.7.1" == tmp_dir.joinpath("fileC").read_text()
 
 
-def test_multiple_serialize_two_part_patch_configfile(tmpdir):
-    tmpdir.join("fileD").write("0.6")
-    tmpdir.chdir()
+def test_multiple_serialize_two_part_patch_configfile(tmp_dir):
+    tmp_dir.joinpath("fileD").write_text("0.6")
 
-    tmpdir.join(".bumpversion.cfg").write(r"""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(r"""[bumpversion]
 current_version = 0.6
 serialize =
   {major}.{minor}.{patch}
@@ -1442,10 +1424,10 @@ parse = (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?
 
     main(["patch"])
 
-    assert "0.6.1" == tmpdir.join("fileD").read()
+    assert "0.6.1" == tmp_dir.joinpath("fileD").read_text()
 
 
-def test_search_uses_shortest_possible_custom_search_pattern(tmpdir):
+def test_search_uses_shortest_possible_custom_search_pattern(tmp_dir):
     config = dedent(r"""
         [bumpversion]
         current_version = 0.0.0
@@ -1460,26 +1442,23 @@ def test_search_uses_shortest_possible_custom_search_pattern(tmpdir):
         search = "version": "{current_version}",
         replace = "version": "{new_version}",
     """)
-    tmpdir.join(".bumpversion.cfg").write(config.encode("utf-8"), mode="wb")
+    tmp_dir.joinpath(".bumpversion.cfg").write_bytes(config.encode("utf-8"))
 
-    tmpdir.join("package.json").write("""{
+    tmp_dir.joinpath("package.json").write_text("""{
         "version": "0.0.0",
         "package": "20.0.0",
     }""")
 
-    tmpdir.chdir()
     main(["patch"])
 
     assert """{
         "version": "0.0.1",
         "package": "20.0.0",
-    }""" == tmpdir.join("package.json").read()
+    }""" == tmp_dir.joinpath("package.json").read_text()
 
 
-def test_log_no_config_file_info_message(tmpdir):
-    tmpdir.chdir()
-
-    tmpdir.join("a_file.txt").write("1.0.0")
+def test_log_no_config_file_info_message(tmp_dir):
+    tmp_dir.joinpath("a_file.txt").write_text("1.0.0")
 
     with LogCapture(level=logging.INFO) as log_capture:
         main(
@@ -1536,9 +1515,7 @@ def test_log_no_config_file_info_message(tmpdir):
     )
 
 
-def test_log_parse_doesnt_parse_current_version(tmpdir):
-    tmpdir.chdir()
-
+def test_log_parse_doesnt_parse_current_version(tmp_dir):
     with LogCapture() as log_capture:
         main(
             [
@@ -1574,9 +1551,7 @@ def test_log_parse_doesnt_parse_current_version(tmpdir):
     )
 
 
-def test_log_invalid_regex_exit(tmpdir):
-    tmpdir.chdir()
-
+def test_log_invalid_regex_exit(tmp_dir):
     with pytest.raises(SystemExit):
         with LogCapture() as log_capture:
             main(
@@ -1600,11 +1575,10 @@ def test_log_invalid_regex_exit(tmpdir):
     )
 
 
-def test_complex_info_logging(tmpdir):
-    tmpdir.join("fileE").write("0.4")
-    tmpdir.chdir()
+def test_complex_info_logging(tmp_dir):
+    tmp_dir.joinpath("fileE").write_text("0.4")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version = 0.4
@@ -1682,11 +1656,10 @@ def test_complex_info_logging(tmpdir):
     )
 
 
-def test_subjunctive_dry_run_logging(tmpdir, vcs):
-    tmpdir.join("dont_touch_me.txt").write("0.8")
-    tmpdir.chdir()
+def test_subjunctive_dry_run_logging(tmp_dir, vcs):
+    tmp_dir.joinpath("dont_touch_me.txt").write_text("0.8")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version = 0.8
@@ -1808,11 +1781,10 @@ def test_subjunctive_dry_run_logging(tmpdir, vcs):
     )
 
 
-def test_log_commit_message_if_no_commit_tag_but_usable_vcs(tmpdir, vcs):
-    tmpdir.join("please_touch_me.txt").write("0.3.3")
-    tmpdir.chdir()
+def test_log_commit_message_if_no_commit_tag_but_usable_vcs(tmp_dir, vcs):
+    tmp_dir.joinpath("please_touch_me.txt").write_text("0.3.3")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         current_version = 0.3.3
@@ -1919,11 +1891,10 @@ def test_log_commit_message_if_no_commit_tag_but_usable_vcs(tmpdir, vcs):
     )
 
 
-def test_listing(tmpdir, vcs):
-    tmpdir.join("please_list_me.txt").write("0.5.5")
-    tmpdir.chdir()
+def test_listing(tmp_dir, vcs):
+    tmp_dir.joinpath("please_list_me.txt").write_text("0.5.5")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         current_version = 0.5.5
@@ -1948,11 +1919,10 @@ def test_listing(tmpdir, vcs):
     )
 
 
-def test_no_list_no_stdout(tmpdir, vcs):
-    tmpdir.join("please_dont_list_me.txt").write("0.5.5")
-    tmpdir.chdir()
+def test_no_list_no_stdout(tmp_dir, vcs):
+    tmp_dir.joinpath("please_dont_list_me.txt").write_text("0.5.5")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         files = please_dont_list_me.txt
@@ -1966,20 +1936,17 @@ def test_no_list_no_stdout(tmpdir, vcs):
     check_call([vcs, "add", "please_dont_list_me.txt"])
     check_call([vcs, "commit", "-m", "initial commit"])
 
-    out = run(
-        ["bumpversion", "patch"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+    output = run(
+        "bumpversion patch", shell=True, capture_output=True
     ).stdout.decode("utf-8")
 
-    assert out == ""
+    assert output == ""
 
 
-def test_bump_non_numeric_parts(tmpdir):
-    tmpdir.join("with_pre_releases.txt").write("1.5.dev")
-    tmpdir.chdir()
+def test_bump_non_numeric_parts(tmp_dir):
+    tmp_dir.joinpath("with_pre_releases.txt").write_text("1.5.dev")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version = 1.5.dev
@@ -1999,18 +1966,17 @@ def test_bump_non_numeric_parts(tmpdir):
 
     main(["release", "--verbose"])
 
-    assert "1.5" == tmpdir.join("with_pre_releases.txt").read()
+    assert "1.5" == tmp_dir.joinpath("with_pre_releases.txt").read_text()
 
     main(["minor", "--verbose"])
 
-    assert "1.6.dev" == tmpdir.join("with_pre_releases.txt").read()
+    assert "1.6.dev" == tmp_dir.joinpath("with_pre_releases.txt").read_text()
 
 
-def test_optional_value_from_documentation(tmpdir):
-    tmpdir.join("optional_value_from_doc.txt").write("1.alpha")
-    tmpdir.chdir()
+def test_optional_value_from_documentation(tmp_dir):
+    tmp_dir.joinpath("optional_value_from_doc.txt").write_text("1.alpha")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
       [bumpversion]
       current_version = 1.alpha
@@ -2032,18 +1998,17 @@ def test_optional_value_from_documentation(tmpdir):
 
     main(["release", "--verbose"])
 
-    assert "1.beta" == tmpdir.join("optional_value_from_doc.txt").read()
+    assert "1.beta" == tmp_dir.joinpath("optional_value_from_doc.txt").read_text()
 
     main(["release", "--verbose"])
 
-    assert "1" == tmpdir.join("optional_value_from_doc.txt").read()
+    assert "1" == tmp_dir.joinpath("optional_value_from_doc.txt").read_text()
 
 
-def test_python_pre_release_release_post_release(tmpdir):
-    tmpdir.join("python386.txt").write("1.0a")
-    tmpdir.chdir()
+def test_python_pre_release_release_post_release(tmp_dir):
+    tmp_dir.joinpath("python386.txt").write_text("1.0a")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version = 1.0a
@@ -2079,7 +2044,7 @@ def test_python_pre_release_release_post_release(tmpdir):
     )
 
     def file_content():
-        return tmpdir.join("python386.txt").read()
+        return tmp_dir.joinpath("python386.txt").read_text()
 
     main(["prerel"])
     assert "1.0b" == file_content()
@@ -2104,11 +2069,10 @@ def test_python_pre_release_release_post_release(tmpdir):
     assert "1.1a" == file_content()
 
 
-def test_part_first_value(tmpdir):
-    tmpdir.join("the_version.txt").write("0.9.4")
-    tmpdir.chdir()
+def test_part_first_value(tmp_dir):
+    tmp_dir.joinpath("the_version.txt").write_text("0.9.4")
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         current_version = 0.9.4
@@ -2122,16 +2086,14 @@ def test_part_first_value(tmpdir):
 
     main(["major", "--verbose"])
 
-    assert "1.1.0" == tmpdir.join("the_version.txt").read()
+    assert "1.1.0" == tmp_dir.joinpath("the_version.txt").read_text()
 
 
-def test_multi_file_configuration(tmpdir):
-    tmpdir.join("FULL_VERSION.txt").write("1.0.3")
-    tmpdir.join("MAJOR_VERSION.txt").write("1")
+def test_multi_file_configuration(tmp_dir):
+    tmp_dir.joinpath("FULL_VERSION.txt").write_text("1.0.3")
+    tmp_dir.joinpath("MAJOR_VERSION.txt").write_text("1")
 
-    tmpdir.chdir()
-
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version = 1.0.3
@@ -2146,22 +2108,20 @@ def test_multi_file_configuration(tmpdir):
     )
 
     main(["major", "--verbose"])
-    assert "2.0.0" in tmpdir.join("FULL_VERSION.txt").read()
-    assert "2" in tmpdir.join("MAJOR_VERSION.txt").read()
+    assert "2.0.0" in tmp_dir.joinpath("FULL_VERSION.txt").read_text()
+    assert "2" in tmp_dir.joinpath("MAJOR_VERSION.txt").read_text()
 
     main(["patch"])
-    assert "2.0.1" in tmpdir.join("FULL_VERSION.txt").read()
-    assert "2" in tmpdir.join("MAJOR_VERSION.txt").read()
+    assert "2.0.1" in tmp_dir.joinpath("FULL_VERSION.txt").read_text()
+    assert "2" in tmp_dir.joinpath("MAJOR_VERSION.txt").read_text()
 
 
-def test_multi_file_configuration2(tmpdir):
-    tmpdir.join("setup.cfg").write("1.6.6")
-    tmpdir.join("README.txt").write("MyAwesomeSoftware(TM) v1.6")
-    tmpdir.join("BUILD_NUMBER").write("1.6.6+joe+38943")
+def test_multi_file_configuration2(tmp_dir):
+    tmp_dir.joinpath("setup.cfg").write_text("1.6.6")
+    tmp_dir.joinpath("README.txt").write_text("MyAwesomeSoftware(TM) v1.6")
+    tmp_dir.joinpath("BUILD_NUMBER").write_text("1.6.6+joe+38943")
 
-    tmpdir.chdir()
-
-    tmpdir.join(r".bumpversion.cfg").write(
+    tmp_dir.joinpath(r".bumpversion.cfg").write_text(
         dedent(r"""
       [bumpversion]
       current_version = 1.6.6
@@ -2190,9 +2150,9 @@ def test_multi_file_configuration2(tmpdir):
     del os.environ["BUILD_NUMBER"]
     del os.environ["USER"]
 
-    assert "1.7.0" in tmpdir.join("setup.cfg").read()
-    assert "MyAwesomeSoftware(TM) v1.7" in tmpdir.join("README.txt").read()
-    assert "1.7.0+bob+38944" in tmpdir.join("BUILD_NUMBER").read()
+    assert "1.7.0" in tmp_dir.joinpath("setup.cfg").read_text()
+    assert "MyAwesomeSoftware(TM) v1.7" in tmp_dir.joinpath("README.txt").read_text()
+    assert "1.7.0+bob+38944" in tmp_dir.joinpath("BUILD_NUMBER").read_text()
 
     os.environ["BUILD_NUMBER"] = "38945"
     os.environ["USER"] = "bob"
@@ -2200,16 +2160,16 @@ def test_multi_file_configuration2(tmpdir):
     del os.environ["BUILD_NUMBER"]
     del os.environ["USER"]
 
-    assert "1.7.1" in tmpdir.join("setup.cfg").read()
-    assert "MyAwesomeSoftware(TM) v1.7" in tmpdir.join("README.txt").read()
-    assert "1.7.1+bob+38945" in tmpdir.join("BUILD_NUMBER").read()
+    assert "1.7.1" in tmp_dir.joinpath("setup.cfg").read_text()
+    assert "MyAwesomeSoftware(TM) v1.7" in tmp_dir.joinpath("README.txt").read_text()
+    assert "1.7.1+bob+38945" in tmp_dir.joinpath("BUILD_NUMBER").read_text()
 
 
-def test_search_replace_to_avoid_updating_unconcerned_lines(tmpdir):
-    tmpdir.chdir()
-
-    tmpdir.join("requirements.txt").write("Django>=1.5.6,<1.6\nMyProject==1.5.6")
-    tmpdir.join("CHANGELOG.md").write(
+def test_search_replace_to_avoid_updating_unconcerned_lines(tmp_dir):
+    tmp_dir.joinpath("requirements.txt").write_text(
+        "Django>=1.5.6,<1.6\nMyProject==1.5.6"
+    )
+    tmp_dir.joinpath("CHANGELOG.md").write_text(
         dedent("""
     # https://keepachangelog.com/en/1.0.0/
 
@@ -2224,7 +2184,7 @@ def test_search_replace_to_avoid_updating_unconcerned_lines(tmpdir):
     """)
     )
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
       [bumpversion]
       current_version = 1.5.6
@@ -2244,7 +2204,7 @@ def test_search_replace_to_avoid_updating_unconcerned_lines(tmpdir):
     with LogCapture() as log_capture:
         main(["minor", "--verbose"])
 
-    utc_today = datetime.utcnow().strftime("%Y-%m-%d")
+    utc_today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     log_capture.check(
         ("bumpversion.cli", "INFO", "Reading config file .bumpversion.cfg:"),
@@ -2314,14 +2274,12 @@ def test_search_replace_to_avoid_updating_unconcerned_lines(tmpdir):
         ),
     )
 
-    assert "MyProject==1.6.0" in tmpdir.join("requirements.txt").read()
-    assert "Django>=1.5.6" in tmpdir.join("requirements.txt").read()
+    assert "MyProject==1.6.0" in tmp_dir.joinpath("requirements.txt").read_text()
+    assert "Django>=1.5.6" in tmp_dir.joinpath("requirements.txt").read_text()
 
 
-def test_search_replace_expanding_changelog(tmpdir):
-    tmpdir.chdir()
-
-    tmpdir.join("CHANGELOG.md").write(
+def test_search_replace_expanding_changelog(tmp_dir):
+    tmp_dir.joinpath("CHANGELOG.md").write_text(
         dedent("""
     My awesome software project Changelog
     =====================================
@@ -2355,10 +2313,9 @@ def test_search_replace_expanding_changelog(tmpdir):
         ---------------------------
     """)
 
-    tmpdir.join(".bumpversion.cfg").write(config_content)
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(config_content)
 
-    with mock.patch("bumpversion.cli.logger"):
-        main(["minor", "--verbose"])
+    main(["minor", "--verbose"])
 
     predate = dedent("""
       Unreleased
@@ -2374,13 +2331,11 @@ def test_search_replace_expanding_changelog(tmpdir):
       * Some other nice feature
       """).strip()
 
-    assert predate in tmpdir.join("CHANGELOG.md").read()
-    assert postdate in tmpdir.join("CHANGELOG.md").read()
+    assert predate in tmp_dir.joinpath("CHANGELOG.md").read_text()
+    assert postdate in tmp_dir.joinpath("CHANGELOG.md").read_text()
 
 
-def test_non_matching_search_does_not_modify_file(tmpdir):
-    tmpdir.chdir()
-
+def test_non_matching_search_does_not_modify_file(tmp_dir):
     changelog_content = dedent("""
     # Unreleased
     
@@ -2400,8 +2355,8 @@ def test_non_matching_search_does_not_modify_file(tmpdir):
       replace = Release v{new_version} ({now:%Y-%m-%d})
     """)
 
-    tmpdir.join("CHANGELOG.md").write(changelog_content)
-    tmpdir.join(".bumpversion.cfg").write(config_content)
+    tmp_dir.joinpath("CHANGELOG.md").write_text(changelog_content)
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(config_content)
 
     with pytest.raises(
         exceptions.VersionNotFoundException,
@@ -2409,13 +2364,14 @@ def test_non_matching_search_does_not_modify_file(tmpdir):
     ):
         main(["patch", "--verbose"])
 
-    assert changelog_content == tmpdir.join("CHANGELOG.md").read()
-    assert config_content in tmpdir.join(".bumpversion.cfg").read()
+    assert changelog_content == tmp_dir.joinpath("CHANGELOG.md").read_text()
+    assert config_content in tmp_dir.joinpath(".bumpversion.cfg").read_text()
 
 
-def test_search_replace_cli(tmpdir):
-    tmpdir.join("file89").write("My birthday: 3.5.98\nCurrent version: 3.5.98")
-    tmpdir.chdir()
+def test_search_replace_cli(tmp_dir):
+    tmp_dir.joinpath("file89").write_text(
+        "My birthday: 3.5.98\nCurrent version: 3.5.98"
+    )
     main(
         [
             "--current-version",
@@ -2429,17 +2385,18 @@ def test_search_replace_cli(tmpdir):
         ]
     )
 
-    assert "My birthday: 3.5.98\nCurrent version: 3.6.0" == tmpdir.join("file89").read()
+    assert (
+        "My birthday: 3.5.98\nCurrent version: 3.6.0"
+        == tmp_dir.joinpath("file89").read_text()
+    )
 
 
-def test_deprecation_warning_files_in_global_configuration(tmpdir):
-    tmpdir.chdir()
+def test_deprecation_warning_files_in_global_configuration(tmp_dir):
+    tmp_dir.joinpath("fileX").write_text("3.2.1")
+    tmp_dir.joinpath("fileY").write_text("3.2.1")
+    tmp_dir.joinpath("fileZ").write_text("3.2.1")
 
-    tmpdir.join("fileX").write("3.2.1")
-    tmpdir.join("fileY").write("3.2.1")
-    tmpdir.join("fileZ").write("3.2.1")
-
-    tmpdir.join(".bumpversion.cfg").write("""[bumpversion]
+    tmp_dir.joinpath(".bumpversion.cfg").write_text("""[bumpversion]
 current_version = 3.2.1
 files = fileX fileY fileZ
 """)
@@ -2457,12 +2414,10 @@ files = fileX fileY fileZ
     assert "'files =' configuration will be deprecated, please use" in str(w.message)
 
 
-def test_deprecation_warning_multiple_files_cli(tmpdir):
-    tmpdir.chdir()
-
-    tmpdir.join("fileA").write("1.2.3")
-    tmpdir.join("fileB").write("1.2.3")
-    tmpdir.join("fileC").write("1.2.3")
+def test_deprecation_warning_multiple_files_cli(tmp_dir):
+    tmp_dir.joinpath("fileA").write_text("1.2.3")
+    tmp_dir.joinpath("fileB").write_text("1.2.3")
+    tmp_dir.joinpath("fileC").write_text("1.2.3")
 
     warning_registry = getattr(bumpversion, "__warningregistry__", None)
     if warning_registry:
@@ -2479,13 +2434,11 @@ def test_deprecation_warning_multiple_files_cli(tmpdir):
     )
 
 
-def test_file_specific_config_inherits_parse_serialize(tmpdir):
-    tmpdir.chdir()
+def test_file_specific_config_inherits_parse_serialize(tmp_dir):
+    tmp_dir.joinpath("todays_ice_cream").write_text("14-chocolate")
+    tmp_dir.joinpath("todays_cake").write_text("14-chocolate")
 
-    tmpdir.join("todays_ice_cream").write("14-chocolate")
-    tmpdir.join("todays_cake").write("14-chocolate")
-
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
       [bumpversion]
       current_version = 14-chocolate
@@ -2510,19 +2463,17 @@ def test_file_specific_config_inherits_parse_serialize(tmpdir):
 
     main(["flavor"])
 
-    assert "14-strawberry" == tmpdir.join("todays_cake").read()
-    assert "14-strawberry" == tmpdir.join("todays_ice_cream").read()
+    assert "14-strawberry" == tmp_dir.joinpath("todays_cake").read_text()
+    assert "14-strawberry" == tmp_dir.joinpath("todays_ice_cream").read_text()
 
     main(["major"])
 
-    assert "15-vanilla" == tmpdir.join("todays_ice_cream").read()
-    assert "15" == tmpdir.join("todays_cake").read()
+    assert "15-vanilla" == tmp_dir.joinpath("todays_ice_cream").read_text()
+    assert "15" == tmp_dir.joinpath("todays_cake").read_text()
 
 
-def test_multi_line_search_is_found(tmpdir):
-    tmpdir.chdir()
-
-    tmpdir.join("the_alphabet.txt").write(
+def test_multi_line_search_is_found(tmp_dir):
+    tmp_dir.joinpath("the_alphabet.txt").write_text(
         dedent("""
       A
       B
@@ -2530,7 +2481,7 @@ def test_multi_line_search_is_found(tmpdir):
     """)
     )
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
     [bumpversion]
     current_version = 9.8.7
@@ -2557,15 +2508,13 @@ def test_multi_line_search_is_found(tmpdir):
       C
       10.0.0
     """)
-        == tmpdir.join("the_alphabet.txt").read()
+        == tmp_dir.joinpath("the_alphabet.txt").read_text()
     )
 
 
 @xfail_if_old_configparser
-def test_configparser_empty_lines_in_values(tmpdir):
-    tmpdir.chdir()
-
-    tmpdir.join("CHANGES.rst").write(
+def test_configparser_empty_lines_in_values(tmp_dir):
+    tmp_dir.joinpath("CHANGES.rst").write_text(
         dedent("""
     My changelog
     ============
@@ -2576,7 +2525,7 @@ def test_configparser_empty_lines_in_values(tmpdir):
     """)
     )
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
     [bumpversion]
     current_version = 0.4.1
@@ -2607,19 +2556,18 @@ def test_configparser_empty_lines_in_values(tmpdir):
       -------
 
     """)
-        == tmpdir.join("CHANGES.rst").read()
+        == tmp_dir.joinpath("CHANGES.rst").read_text()
     )
 
 
-def test_regression_tag_name_with_hyphens(tmpdir, git):
-    tmpdir.chdir()
-    tmpdir.join("some_source.txt").write("2014.10.22")
+def test_regression_tag_name_with_hyphens(tmp_dir, git):
+    tmp_dir.joinpath("some_source.txt").write_text("2014.10.22")
     check_call([git, "init"])
     check_call([git, "add", "some_source.txt"])
     check_call([git, "commit", "-m", "initial commit"])
     check_call([git, "tag", "very-unrelated-but-containing-lots-of-hyphens"])
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
     [bumpversion]
     current_version = 2014.10.22
@@ -2629,17 +2577,14 @@ def test_regression_tag_name_with_hyphens(tmpdir, git):
     main(["patch", "some_source.txt"])
 
 
-def test_unclean_repo_exception(tmpdir, git, caplog):
-    tmpdir.chdir()
-
+def test_unclean_repo_exception(tmp_dir, git, caplog):
     config = """[bumpversion]
 current_version = 0.0.0
 tag = True
 commit = True
 message = XXX
 """
-
-    tmpdir.join("file1").write("foo")
+    tmp_dir.joinpath("file1").write_text("foo")
 
     # If I have a repo with an initial commit
     check_call([git, "init"])
@@ -2647,7 +2592,7 @@ message = XXX
     check_call([git, "commit", "-m", "initial commit"])
 
     # If I add the bumpversion config, uncommitted
-    tmpdir.join(".bumpversion.cfg").write(config)
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(config)
 
     # I expect bumpversion patch to fail
     with pytest.raises(subprocess.CalledProcessError):
@@ -2657,16 +2602,15 @@ message = XXX
     assert "Failed to run" in caplog.text
 
 
-def test_regression_characters_after_last_label_serialize_string(tmpdir):
-    tmpdir.chdir()
-    tmpdir.join("bower.json").write("""
+def test_regression_characters_after_last_label_serialize_string(tmp_dir):
+    tmp_dir.joinpath("bower.json").write_text("""
     {
       "version": "1.0.0",
       "dependency1": "1.0.0",
     }
     """)
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
     [bumpversion]
     current_version = 1.0.0
@@ -2680,9 +2624,8 @@ def test_regression_characters_after_last_label_serialize_string(tmpdir):
     main(["patch", "bower.json"])
 
 
-def test_regression_dont_touch_capitalization_of_keys_in_config(tmpdir):
-    tmpdir.chdir()
-    tmpdir.join("setup.cfg").write(
+def test_regression_dont_touch_capitalization_of_keys_in_config(tmp_dir):
+    tmp_dir.joinpath("setup.cfg").write_text(
         dedent("""
     [bumpversion]
     current_version = 0.1.0
@@ -2702,19 +2645,18 @@ def test_regression_dont_touch_capitalization_of_keys_in_config(tmpdir):
     [other]
     DJANGO_SETTINGS = Value
     """).strip()
-        == tmpdir.join("setup.cfg").read().strip()
+        == tmp_dir.joinpath("setup.cfg").read_text().strip()
     )
 
 
-def test_regression_new_version_cli_in_files(tmpdir):
+def test_regression_new_version_cli_in_files(tmp_dir):
     """
     Reported here: https://github.com/peritus/bumpversion/issues/60
     """
-    tmpdir.chdir()
-    tmpdir.join("myp___init__.py").write("__version__ = '0.7.2'")
-    tmpdir.chdir()
 
-    tmpdir.join(".bumpversion.cfg").write(
+    tmp_dir.joinpath("myp___init__.py").write_text("__version__ = '0.7.2'")
+
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         current_version = 0.7.2
@@ -2728,20 +2670,19 @@ def test_regression_new_version_cli_in_files(tmpdir):
 
     main("patch --allow-dirty --verbose --new-version 0.9.3".split(" "))
 
-    assert "__version__ = '0.9.3'" == tmpdir.join("myp___init__.py").read()
-    assert "current_version = 0.9.3" in tmpdir.join(".bumpversion.cfg").read()
+    assert "__version__ = '0.9.3'" == tmp_dir.joinpath("myp___init__.py").read_text()
+    assert "current_version = 0.9.3" in tmp_dir.joinpath(".bumpversion.cfg").read_text()
 
 
-def test_correct_interpolation_for_setup_cfg_files(tmpdir, configfile):
+def test_correct_interpolation_for_setup_cfg_files(tmp_dir, configfile):
     """
     Reported here: https://github.com/c4urself/bump2version/issues/21
     """
-    tmpdir.chdir()
-    tmpdir.join("file.py").write("XX-XX-XXXX v. X.X.X")
-    tmpdir.chdir()
+
+    tmp_dir.joinpath("file.py").write_text("XX-XX-XXXX v. X.X.X")
 
     if configfile == "setup.cfg":
-        tmpdir.join(configfile).write(
+        tmp_dir.joinpath(configfile).write_text(
             dedent("""
             [bumpversion]
             current_version = 0.7.2
@@ -2751,7 +2692,7 @@ def test_correct_interpolation_for_setup_cfg_files(tmpdir, configfile):
             """).strip()
         )
     else:
-        tmpdir.join(configfile).write(
+        tmp_dir.joinpath(configfile).write_text(
             dedent("""
             [bumpversion]
             current_version = 0.7.2
@@ -2765,14 +2706,14 @@ def test_correct_interpolation_for_setup_cfg_files(tmpdir, configfile):
 
     assert (
         datetime.now().strftime("%m-%d-%Y") + " v. 1.0.0"
-        == tmpdir.join("file.py").read()
+        == tmp_dir.joinpath("file.py").read_text()
     )
-    assert "current_version = 1.0.0" in tmpdir.join(configfile).read()
+    assert "current_version = 1.0.0" in tmp_dir.joinpath(configfile).read_text()
 
 
 @pytest.mark.parametrize("newline", [b"\n", b"\r\n"])
-def test_retain_newline(tmpdir, configfile, newline):
-    tmpdir.join("file.py").write_binary(
+def test_retain_newline(tmp_dir, configfile, newline):
+    tmp_dir.joinpath("file.py").write_bytes(
         dedent("""
         0.7.2
         Some Content
@@ -2781,9 +2722,8 @@ def test_retain_newline(tmpdir, configfile, newline):
         .encode(encoding="UTF-8")
         .replace(b"\n", newline)
     )
-    tmpdir.chdir()
 
-    tmpdir.join(configfile).write_binary(
+    tmp_dir.joinpath(configfile).write_bytes(
         dedent("""
         [bumpversion]
         current_version = 0.7.2
@@ -2798,8 +2738,8 @@ def test_retain_newline(tmpdir, configfile, newline):
 
     main(["major"])
 
-    assert newline in tmpdir.join("file.py").read_binary()
-    new_config = tmpdir.join(configfile).read_binary()
+    assert newline in tmp_dir.joinpath("file.py").read_bytes()
+    new_config = tmp_dir.joinpath(configfile).read_bytes()
     assert newline in new_config
 
     # Ensure there is only a single newline (not two) at the end of the file
@@ -2807,10 +2747,10 @@ def test_retain_newline(tmpdir, configfile, newline):
     assert new_config.endswith(b"[bumpversion:file:file.py]" + newline)
 
 
-def test_no_configured_files(tmpdir, vcs):
-    tmpdir.join("please_ignore_me.txt").write("0.5.5")
-    tmpdir.chdir()
-    tmpdir.join(".bumpversion.cfg").write(
+def test_no_configured_files(tmp_dir, vcs):
+    tmp_dir.joinpath("please_ignore_me.txt").write_text("0.5.5")
+
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         current_version = 1.1.1
@@ -2818,14 +2758,14 @@ def test_no_configured_files(tmpdir, vcs):
         """).strip()
     )
     main(["--no-configured-files", "patch"])
-    assert "0.5.5" == tmpdir.join("please_ignore_me.txt").read()
+    assert "0.5.5" == tmp_dir.joinpath("please_ignore_me.txt").read_text()
 
 
-def test_no_configured_files_still_file_args_work(tmpdir, vcs):
-    tmpdir.join("please_ignore_me.txt").write("0.5.5")
-    tmpdir.join("please_update_me.txt").write("1.1.1")
-    tmpdir.chdir()
-    tmpdir.join(".bumpversion.cfg").write(
+def test_no_configured_files_still_file_args_work(tmp_dir, vcs):
+    tmp_dir.joinpath("please_ignore_me.txt").write_text("0.5.5")
+    tmp_dir.joinpath("please_update_me.txt").write_text("1.1.1")
+
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent("""
         [bumpversion]
         current_version = 1.1.1
@@ -2833,8 +2773,8 @@ def test_no_configured_files_still_file_args_work(tmpdir, vcs):
         """).strip()
     )
     main(["--no-configured-files", "patch", "please_update_me.txt"])
-    assert "0.5.5" == tmpdir.join("please_ignore_me.txt").read()
-    assert "1.1.2" == tmpdir.join("please_update_me.txt").read()
+    assert "0.5.5" == tmp_dir.joinpath("please_ignore_me.txt").read_text()
+    assert "1.1.2" == tmp_dir.joinpath("please_update_me.txt").read_text()
 
 
 class TestSplitArgsInOptionalAndPositional:
@@ -2884,10 +2824,10 @@ class TestSplitArgsInOptionalAndPositional:
         assert optional == ["--allow-dirty", "-m", '"Commit"']
 
 
-def test_build_number_configuration(tmpdir):
-    tmpdir.join("VERSION.txt").write("2.1.6-5123")
-    tmpdir.chdir()
-    tmpdir.join(".bumpversion.cfg").write(
+def test_build_number_configuration(tmp_dir):
+    tmp_dir.joinpath("VERSION.txt").write_text("2.1.6-5123")
+
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version: 2.1.6-5123
@@ -2902,19 +2842,19 @@ def test_build_number_configuration(tmpdir):
     )
 
     main(["build"])
-    assert "2.1.6-5124" == tmpdir.join("VERSION.txt").read()
+    assert "2.1.6-5124" == tmp_dir.joinpath("VERSION.txt").read_text()
 
     main(["major"])
-    assert "3.0.0-5124" == tmpdir.join("VERSION.txt").read()
+    assert "3.0.0-5124" == tmp_dir.joinpath("VERSION.txt").read_text()
 
     main(["build"])
-    assert "3.0.0-5125" == tmpdir.join("VERSION.txt").read()
+    assert "3.0.0-5125" == tmp_dir.joinpath("VERSION.txt").read_text()
 
 
-def test_independent_falsy_value_in_config_does_not_bump_independently(tmpdir):
-    tmpdir.join("VERSION").write("2.1.0-5123")
-    tmpdir.chdir()
-    tmpdir.join(".bumpversion.cfg").write(
+def test_independent_falsy_value_in_config_does_not_bump_independently(tmp_dir):
+    tmp_dir.joinpath("VERSION").write_text("2.1.0-5123")
+
+    tmp_dir.joinpath(".bumpversion.cfg").write_text(
         dedent(r"""
         [bumpversion]
         current_version: 2.1.0-5123
@@ -2929,7 +2869,7 @@ def test_independent_falsy_value_in_config_does_not_bump_independently(tmpdir):
     )
 
     main(["build"])
-    assert "2.1.0-5124" == tmpdir.join("VERSION").read()
+    assert "2.1.0-5124" == tmp_dir.joinpath("VERSION").read_text()
 
     main(["major"])
-    assert "3.0.0-0" == tmpdir.join("VERSION").read()
+    assert "3.0.0-0" == tmp_dir.joinpath("VERSION").read_text()
