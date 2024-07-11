@@ -1,7 +1,15 @@
 **unreleased**
 **v1.4.2-dev**
 **v1.4.1**
-**v1.0.2-dev**
+- Improve type hints
+- Migrate from tox to github runners
+- Fix python3.12 warning for `datetime.utcnow`
+
+**v1.4.0**
+- Fix bump change multi version value in pyproject.toml
+- Use `poetry` to manage dependencies
+
+**v1.0.2-dev(unreleased)**
 - Declare `bump2version` as unmaintained
 - Housekeeping: migrated from travis+appveyor to GitHub Actions for CI, thanks @clbarnes
 
