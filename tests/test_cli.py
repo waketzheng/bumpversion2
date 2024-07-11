@@ -6,7 +6,6 @@ import subprocess
 import sys
 import warnings
 from configparser import RawConfigParser
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
@@ -301,20 +300,11 @@ def test_simple_replacement(tmp_dir):
     assert "1.2.1" == tmp_dir.joinpath("VERSION").read_text()
 
 
-@contextmanager
-def patch_loggers():
-    yield
-    # with mock.patch("bumpversion.cli.logger"):
-    #     with mock.patch("bumpversion.cli.logger_list"):
-    #         yield
-
-
 def test_simple_replacement_in_utf8_file(tmp_dir):
     version_file = tmp_dir.joinpath("VERSION")
     version_file.write_bytes("Kröt1.3.0".encode())
     cmd = f"patch --verbose --current-version 1.3.0 --new-version 1.3.1 {version_file.name}"
-    with patch_loggers():
-        main(shlex_split(cmd))
+    main(shlex_split(cmd))
     out = version_file.read_bytes()
     assert "'Kr\\xc3\\xb6t1.3.1'" in repr(out)
 
@@ -445,8 +435,7 @@ current_version: 0.0.13
 new_version: 0.0.14
 [bumpversion:file:file3]""")
 
-    with patch_loggers():
-        main(["patch", "--verbose"])
+    main(["patch", "--verbose"])
 
     assert """[bumpversion]
 current_version = 0.0.14
@@ -2328,8 +2317,7 @@ def test_search_replace_expanding_changelog(tmp_dir):
 
     tmp_dir.joinpath(".bumpversion.cfg").write_text(config_content)
 
-    with patch_loggers():
-        main(["minor", "--verbose"])
+    main(["minor", "--verbose"])
 
     predate = dedent("""
       Unreleased
@@ -2855,16 +2843,13 @@ def test_build_number_configuration(tmp_dir):
         """)
     )
 
-    with patch_loggers():
-        main(["build"])
+    main(["build"])
     assert "2.1.6-5124" == tmp_dir.joinpath("VERSION.txt").read_text()
 
-    with patch_loggers():
-        main(["major"])
+    main(["major"])
     assert "3.0.0-5124" == tmp_dir.joinpath("VERSION.txt").read_text()
 
-    with patch_loggers():
-        main(["build"])
+    main(["build"])
     assert "3.0.0-5125" == tmp_dir.joinpath("VERSION.txt").read_text()
 
 
