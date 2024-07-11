@@ -6,15 +6,13 @@ import subprocess
 import sys
 import warnings
 from configparser import RawConfigParser
-from contextlib import contextmanager, redirect_stdout
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import partial
-from io import StringIO
 from pathlib import Path
 from shlex import split as shlex_split
 from textwrap import dedent
 from typing import Generator, List
-from unittest import mock
 
 import pytest
 from testfixtures import LogCapture
@@ -126,16 +124,6 @@ def _mock_calls_to_string(called_mock) -> List[str]:
         )
         for name, args, kwargs in called_mock.mock_calls
     ]
-
-
-class LogCapture2(LogCapture):
-    def __enter__(self) -> "LogCapture2":
-        self.redirect = redirect_stdout(StringIO()).__enter__()
-        return super().__enter__()
-
-    def __exit__(self, *args, **kw):
-        super().__exit__(*args, **kw)
-        self.redirect.__exit__(*args, **kw)
 
 
 EXPECTED_OPTIONS = r"""
@@ -315,9 +303,10 @@ def test_simple_replacement(tmp_dir):
 
 @contextmanager
 def patch_loggers():
-    with mock.patch("bumpversion.cli.logger"):
-        with mock.patch("bumpversion.cli.logger_list"):
-            yield
+    yield
+    # with mock.patch("bumpversion.cli.logger"):
+    #     with mock.patch("bumpversion.cli.logger_list"):
+    #         yield
 
 
 def test_simple_replacement_in_utf8_file(tmp_dir):
