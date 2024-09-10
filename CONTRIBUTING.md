@@ -24,8 +24,8 @@ Execute the following commands:
     git pull
     make test
     make lint
-    bump2version release
+    bumpversion release
     make dist
     make upload
-    bump2version --no-tag patch
+    bumpversion --no-tag patch
     git push origin master --tags
