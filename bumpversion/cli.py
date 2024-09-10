@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import glob
 import io
 import itertools
@@ -185,6 +186,7 @@ def _parse_arguments_phase_1(original_args):
             "Giving multiple files on the command line will be deprecated, "
             "please use [bumpversion:file:...] in a config file.",
             PendingDeprecationWarning,
+            stacklevel=2,
         )
     root_parser = argparse.ArgumentParser(add_help=False)
     root_parser.add_argument(
@@ -297,6 +299,7 @@ def _load_configuration(config_file, explicit_config, defaults):
         warnings.warn(
             "'files =' configuration will be deprecated, please use [bumpversion:file:...]",
             PendingDeprecationWarning,
+            stacklevel=2,
         )
 
     defaults.update(dict(config.items("bumpversion")))
@@ -311,10 +314,8 @@ def _load_configuration(config_file, explicit_config, defaults):
             pass  # no default value then ;)
 
     for boolvaluename in ("commit", "tag", "dry_run"):
-        try:
+        with contextlib.suppress(NoOptionError):  # no default value then ;)
             defaults[boolvaluename] = config.getboolean("bumpversion", boolvaluename)
-        except NoOptionError:
-            pass  # no default value then ;)
 
     part_configs = {}
     files = []
@@ -577,6 +578,13 @@ def _parse_arguments_phase_3(remaining_argv, positionals, defaults, parser2):
         ),
     )
     parser3.add_argument(
+        "--message-emoji",
+        metavar="MESSAGE_EMOJI",
+        dest="message_emoji",
+        help="Prefix emoji of commit message",
+        default=defaults.get("message_emoji", ""),
+    )
+    parser3.add_argument(
         "--commit-args",
         metavar="COMMIT_ARGS",
         help="Extra arguments to commit command",
@@ -681,7 +689,8 @@ def _update_config_file(
     except UnicodeEncodeError:
         warnings.warn(
             "Unable to write UTF-8 to config file, because of an old configparser version. "
-            "Update with `pip install --upgrade configparser`."
+            "Update with `pip install --upgrade configparser`.",
+            stacklevel=2,
         )
 
 
@@ -731,6 +740,10 @@ def _commit_to_vcs(
     context.update(special_char_context)
 
     commit_message = args.message.format(**context)
+    if emoji := args.message_emoji:
+        if emoji == "1":
+            emoji = "⬆️"
+        commit_message = emoji + " " + commit_message
 
     logger.info(
         "%s to %s with message '%s'",

@@ -34,7 +34,7 @@ class NumericFunction(Function):
                     "The given first value {} does not contain any digit".format(
                         first_value
                     )
-                )
+                ) from None
         else:
             first_value = 0
         super().__init__(first_value, independent)
@@ -64,7 +64,7 @@ class ValuesFunction(Function):
         self, values, optional_value=None, first_value=None, independent=False
     ) -> None:
         if not values:
-            raise ValueError("Version part values cannot be empty")
+            raise ValueError("Version part values cannot be empty") from None
 
         self._values = values
 
@@ -76,7 +76,7 @@ class ValuesFunction(Function):
                 "Optional value {} must be included in values {}".format(
                     optional_value, values
                 )
-            )
+            ) from None
 
         self.optional_value = optional_value
 
@@ -88,7 +88,7 @@ class ValuesFunction(Function):
                 "First value {} must be included in values {}".format(
                     first_value, values
                 )
-            )
+            ) from None
 
         self.first_value = first_value
         self.independent = independent
@@ -101,4 +101,4 @@ class ValuesFunction(Function):
                 "The part has already the maximum value among {} and cannot be bumped.".format(
                     self._values
                 )
-            )
+            ) from None

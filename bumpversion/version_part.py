@@ -228,7 +228,7 @@ class VersionConfig:
                 "Did not find key {} in {} when serializing version number".format(
                     repr(missing_key), repr(version)
                 )
-            )
+            ) from e
 
         keys_needing_representation = set()
 
@@ -247,14 +247,13 @@ class VersionConfig:
         required_by_format = set(labels_for_format(serialize_format))
 
         # try whether all parsed keys are represented
-        if raise_if_incomplete:
-            if not keys_needing_representation <= required_by_format:
-                raise IncompleteVersionRepresentationException(
-                    "Could not represent '{}' in format '{}'".format(
-                        "', '".join(keys_needing_representation ^ required_by_format),
-                        serialize_format,
-                    )
+        if raise_if_incomplete and keys_needing_representation > required_by_format:
+            raise IncompleteVersionRepresentationException(
+                "Could not represent '{}' in format '{}'".format(
+                    "', '".join(keys_needing_representation ^ required_by_format),
+                    serialize_format,
                 )
+            ) from None
 
         return serialized
 

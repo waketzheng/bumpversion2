@@ -12,7 +12,7 @@ python = "^3.8"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.2.2"
+pytest = "^8.3.2"
 testfixtures = "^8.3.0"
 
 [tool.poetry.scripts]
