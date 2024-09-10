@@ -1,13 +1,19 @@
 **unreleased**
 **v1.4.2-dev**
-**v1.4.1**
+- feat: support `--commit-emoji` option
+
+## [v1.4.1] - 2024-07-11
+
 - Improve type hints
 - Migrate from tox to github runners
 - Fix python3.12 warning for `datetime.utcnow`
 
-**v1.4.0**
+## [v1.4.0] - 2024-07-08
+
 - Fix bump change multi version value in pyproject.toml
 - Use `poetry` to manage dependencies
+
+----
 
 **v1.0.2-dev(unreleased)**
 - Declare `bump2version` as unmaintained
@@ -204,3 +210,7 @@ in the configuration format. This release is fully backwards compatible to
 **v0.1.0**
 
 - Initial public version
+
+[v1.4.2]: https://github.com/waketzheng/bumpversion2/releases/tag/v1.4.2
+[v1.4.1]: https://github.com/waketzheng/bumpversion2/releases/tag/v1.4.1
+[v1.4.0]: https://github.com/waketzheng/bumpversion2/releases/tag/v1.4.0
