@@ -1,16 +1,16 @@
 **unreleased**
-**v1.4.2**
-**v1.4.2-dev**
+**v1.4.3-dev**
+
+## [v1.4.2] - 2024-09-10
 - feat: support `--commit-emoji` option
+- docs: add release date and version link in changelog
 
 ## [v1.4.1] - 2024-07-11
-
 - Improve type hints
 - Migrate from tox to github runners
 - Fix python3.12 warning for `datetime.utcnow`
 
 ## [v1.4.0] - 2024-07-08
-
 - Fix bump change multi version value in pyproject.toml
 - Use `poetry` to manage dependencies
 
