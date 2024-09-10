@@ -1,4 +1,5 @@
 **unreleased**
+**v1.4.2**
 **v1.4.2-dev**
 - feat: support `--commit-emoji` option
 
