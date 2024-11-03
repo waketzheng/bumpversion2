@@ -799,29 +799,6 @@ def test_commit_with_emoji(tmp_dir, vcs):
             "patch",
             "--message-emoji=10",
             "--current-version",
-            "47.1.1",
-            "--commit",
-            "VERSION",
-        ]
-    )
-
-    assert tmp_dir.joinpath("VERSION").read_text() == "47.1.2"
-
-    log = check_output([vcs, "log", "-p"]).decode("utf-8")
-
-    assert "-47.1.1" in log
-    assert "+47.1.2" in log
-    assert "⬆️ Bump version: 47.1.1 → 47.1.2" in log
-
-    tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
-
-    assert b"v47.1.2" not in tag_out
-
-    main(
-        [
-            "patch",
-            "--message-emoji=⬆",
-            "--current-version",
             "47.1.2",
             "--commit",
             "VERSION",
@@ -831,11 +808,34 @@ def test_commit_with_emoji(tmp_dir, vcs):
     assert tmp_dir.joinpath("VERSION").read_text() == "47.1.3"
 
     log = check_output([vcs, "log", "-p"]).decode("utf-8")
-    assert "⬆ Bump version: 47.1.2 → 47.1.3" in log
 
-    # tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
+    assert "-47.1.2" in log
+    assert "+47.1.3" in log
+    assert "⬆️ Bump version: 47.1.2 → 47.1.3" in log
 
-    # assert b"v47.1.3" in tag_out
+    tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
+
+    assert b"v47.1.3" not in tag_out
+
+    main(
+        [
+            "patch",
+            "--message-emoji=⬆",
+            "--current-version",
+            "47.1.3",
+            "--commit",
+            "VERSION",
+        ]
+    )
+
+    assert tmp_dir.joinpath("VERSION").read_text() == "47.1.4"
+
+    log = check_output([vcs, "log", "-p"]).decode("utf-8")
+    assert "⬆ Bump version: 47.1.3 → 47.1.4" in log
+
+    tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
+
+    assert b"v47.1.4" not in tag_out
 
 
 def test_commit_and_tag_with_configfile(tmp_dir, vcs):
