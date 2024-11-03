@@ -788,6 +788,29 @@ def test_commit_with_emoji(tmp_dir, vcs):
 
     assert "-47.1.1" in log
     assert "+47.1.2" in log
+    assert "⬆️  Bump version: 47.1.1 → 47.1.2" in log
+
+    tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
+
+    assert b"v47.1.2" not in tag_out
+
+    main(
+        [
+            "patch",
+            "--message-emoji=10",
+            "--current-version",
+            "47.1.1",
+            "--commit",
+            "VERSION",
+        ]
+    )
+
+    assert tmp_dir.joinpath("VERSION").read_text() == "47.1.2"
+
+    log = check_output([vcs, "log", "-p"]).decode("utf-8")
+
+    assert "-47.1.1" in log
+    assert "+47.1.2" in log
     assert "⬆️ Bump version: 47.1.1 → 47.1.2" in log
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])

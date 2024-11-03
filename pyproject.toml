@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bumpversion2"
-version = "0"  # manage by poetry-version-plugin
+version = "0"  # manage by poetry-plugin-version
 description = ""
 authors = ["Waket Zheng <waketzheng@gmail.com>"]
 license = "MIT"
@@ -12,13 +12,14 @@ python = "^3.8"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.2"
+fast-dev-cli = {version=">=0.11.1", python=">=3.10"}
+pytest = "^8.3.3"
 testfixtures = "^8.3.0"
 
 [tool.poetry.scripts]
 bumpversion = "bumpversion:cli.main"
 
-[tool.poetry-version-plugin]
+[tool.poetry-plugin-version]
 source = "init"
 
 [tool.mypy]

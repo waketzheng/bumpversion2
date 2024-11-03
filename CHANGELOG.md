@@ -1,5 +1,6 @@
 **unreleased**
 **v1.4.3-dev**
+- Default to add one more space behind bump emoji
 
 ## [v1.4.2] - 2024-09-10
 - feat: support `--commit-emoji` option

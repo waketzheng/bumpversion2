@@ -742,6 +742,8 @@ def _commit_to_vcs(
     commit_message = args.message.format(**context)
     if emoji := args.message_emoji:
         if emoji == "1":
+            emoji = "⬆️ "
+        elif emoji == "10":
             emoji = "⬆️"
         commit_message = emoji + " " + commit_message
 
