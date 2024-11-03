@@ -1,4 +1,5 @@
 **unreleased**
+**v1.4.3**
 **v1.4.3-dev**
 **v1.4.3-dev**
 - Default to add one more space behind bump emoji
