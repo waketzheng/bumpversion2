@@ -1,8 +1,7 @@
 **unreleased**
 **v1.4.4-dev**
-**v1.4.3**
-**v1.4.3-dev**
-**v1.4.3-dev**
+
+## [v1.4.3] - 2024-11-04
 - Default to add one more space behind bump emoji
 
 ## [v1.4.2] - 2024-09-10
