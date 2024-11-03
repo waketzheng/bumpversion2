@@ -208,6 +208,10 @@ options:
 
 def _maybe_out(out: str) -> str:
     # Usage string have diff prompt in mac os
+    if sys.version_info >= (3, 13):
+        msg_py313 = "--message, -m COMMIT_MSG"
+        msg_py312 = "--message COMMIT_MSG, -m COMMIT_MSG"
+        out = out.replace(msg_py313, msg_py312)
     if EXPECTED_USAGE not in out:
         a, b = ("options:", "optional arguments:")
         if a not in out:
