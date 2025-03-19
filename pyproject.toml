@@ -1,26 +1,33 @@
-[tool.poetry]
+[project]
 name = "bumpversion2"
-version = "0"  # manage by poetry-plugin-version
 description = ""
-authors = ["Waket Zheng <waketzheng@gmail.com>"]
-license = "MIT"
+authors = [{name="Waket Zheng", email="waketzheng@gmail.com"}]
+license = {text="MIT"}
 readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.poetry]
+version = "0"  # manage by poetry-plugin-version
 packages = [{include="bumpversion"}]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-
-
 [tool.poetry.group.dev.dependencies]
-fast-dev-cli = {version=">=0.11.1", python=">=3.10"}
+fast-dev-cli = "^0.12.0"
 pytest = "^8.3.5"
 testfixtures = "^8.3.0"
 
-[tool.poetry.scripts]
+[project.scripts]
 bumpversion = "bumpversion:cli.main"
 
-[tool.poetry-plugin-version]
-source = "init"
+[tool.ruff.lint]
+extend-select = [
+    "I",      # https://docs.astral.sh/ruff/rules/#isort-i
+    "SIM",    # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
+    "FA",     # https://docs.astral.sh/ruff/rules/#flake8-future-annotations-fa
+    "UP",     # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "RUF100", # https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
+]
+ignore = ["UP031"] # https://docs.astral.sh/ruff/rules/printf-string-formatting/
 
 [tool.mypy]
 pretty = true
@@ -39,5 +46,5 @@ module = ["tests.test_cli"]
 check_untyped_defs = true
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-plugin-version"]
+build-backend = "poetry_plugin_version.api"

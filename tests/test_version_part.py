@@ -1,4 +1,5 @@
 import pytest
+
 from bumpversion.version_part import (
     ConfiguredVersionPartConfiguration,
     NumericVersionPartConfiguration,
@@ -44,11 +45,13 @@ def test_version_part_check_optional_true(confvpc):
 
 
 def test_version_part_format(confvpc):
-    assert "{}".format(VersionPart(confvpc.first_value, confvpc)) == confvpc.first_value
+    assert f"{VersionPart(confvpc.first_value, confvpc)}" == confvpc.first_value
 
 
 def test_version_part_equality(confvpc):
-    assert VersionPart(confvpc.first_value, confvpc) == VersionPart(confvpc.first_value, confvpc)
+    assert VersionPart(confvpc.first_value, confvpc) == VersionPart(
+        confvpc.first_value, confvpc
+    )
 
 
 def test_version_part_null(confvpc):

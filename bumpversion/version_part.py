@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 import re
 import string
-from typing import Iterator, Optional, Type
+from collections.abc import Iterator
 
 from bumpversion.exceptions import (
     IncompleteVersionRepresentationException,
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class PartConfiguration:
-    function_cls: Type[Function] = NumericFunction
+    function_cls: type[Function] = NumericFunction
 
     def __init__(self, *args, **kwds) -> None:
         self.function = self.function_cls(*args, **kwds)
@@ -69,10 +71,10 @@ class VersionPart:
     def value(self) -> str:
         return self._value or self.config.optional_value
 
-    def copy(self) -> "VersionPart":
+    def copy(self) -> VersionPart:
         return VersionPart(self._value)
 
-    def bump(self) -> "VersionPart":
+    def bump(self) -> VersionPart:
         return VersionPart(self.config.bump(self.value), self.config)
 
     def is_optional(self) -> bool:
@@ -85,12 +87,14 @@ class VersionPart:
         return self.value
 
     def __repr__(self) -> str:
-        return "<bumpversion.VersionPart:{}:{}>".format(self.config.__class__.__name__, self.value)
+        return (
+            f"<bumpversion.VersionPart:{self.config.__class__.__name__}:{self.value}>"
+        )
 
     def __eq__(self, other) -> bool:
         return self.value == other.value
 
-    def null(self) -> "VersionPart":
+    def null(self) -> VersionPart:
         return VersionPart(self.config.first_value, self.config)
 
 
@@ -109,9 +113,9 @@ class Version:
         return iter(self._values)
 
     def __repr__(self) -> str:
-        return "<bumpversion.Version:{}>".format(keyvaluestring(self._values))
+        return f"<bumpversion.Version:{keyvaluestring(self._values)}>"
 
-    def bump(self, part_name, order) -> "Version":
+    def bump(self, part_name, order) -> Version:
         bumped = False
 
         new_values = {}
@@ -136,7 +140,9 @@ class Version:
 
 
 def labels_for_format(serialize_format) -> Iterator[str]:
-    return (label for _, label, _, _ in string.Formatter().parse(serialize_format) if label)
+    return (
+        label for _, label, _, _ in string.Formatter().parse(serialize_format) if label
+    )
 
 
 class VersionConfig:
@@ -166,7 +172,7 @@ class VersionConfig:
         # this seems like a good idea because this should be the most complete format
         return labels_for_format(self.serialize_formats[0])
 
-    def parse(self, version_string) -> Optional[Version]:
+    def parse(self, version_string) -> Version | None:
         if not version_string:
             return None
 
@@ -200,7 +206,9 @@ class VersionConfig:
 
         return v
 
-    def _serialize(self, version, serialize_format, context, raise_if_incomplete=False) -> str:
+    def _serialize(
+        self, version, serialize_format, context, raise_if_incomplete=False
+    ) -> str:
         """
         Attempts to serialize a version with the given serialization format.
 
@@ -219,9 +227,7 @@ class VersionConfig:
         except KeyError as e:
             missing_key = getattr(e, "message", e.args[0])
             raise MissingValueForSerializationException(
-                "Did not find key {} in {} when serializing version number".format(
-                    repr(missing_key), repr(version)
-                )
+                f"Did not find key {repr(missing_key)} in {repr(version)} when serializing version number"
             ) from e
 
         keys_needing_representation = set()
@@ -254,19 +260,27 @@ class VersionConfig:
     def _choose_serialize_format(self, version: Version, context) -> str:
         chosen = None
 
-        logger.debug("Available serialization formats: '%s'", "', '".join(self.serialize_formats))
+        logger.debug(
+            "Available serialization formats: '%s'", "', '".join(self.serialize_formats)
+        )
 
         for serialize_format in self.serialize_formats:
             try:
-                self._serialize(version, serialize_format, context, raise_if_incomplete=True)
+                self._serialize(
+                    version, serialize_format, context, raise_if_incomplete=True
+                )
                 # Prefer shorter or first search expression.
                 chosen_part_count = None
                 if chosen:
                     chosen_part_count = len(list(string.Formatter().parse(chosen)))
-                serialize_part_count = len(list(string.Formatter().parse(serialize_format)))
+                serialize_part_count = len(
+                    list(string.Formatter().parse(serialize_format))
+                )
                 if not chosen or chosen_part_count > serialize_part_count:
                     chosen = serialize_format
-                    logger.debug("Found '%s' to be a usable serialization format", chosen)
+                    logger.debug(
+                        "Found '%s' to be a usable serialization format", chosen
+                    )
                 else:
                     logger.debug(
                         "Found '%s' usable serialization format, but it's longer",

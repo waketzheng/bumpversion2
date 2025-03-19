@@ -5,19 +5,20 @@ import platform
 import subprocess
 import sys
 import warnings
+from collections.abc import Generator
 from configparser import RawConfigParser
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 from shlex import split as shlex_split
 from textwrap import dedent
-from typing import Generator, List
+
+import pytest
+from testfixtures import LogCapture
 
 import bumpversion
-import pytest
 from bumpversion import exceptions
 from bumpversion.cli import DESCRIPTION, main, split_args_in_optional_and_positional
-from testfixtures import LogCapture
 
 if sys.version_info >= (3, 11):
     from contextlib import chdir
@@ -51,9 +52,13 @@ check_call = partial(subprocess.check_call, env=SUBPROCESS_ENV)
 check_output = partial(subprocess.check_output, env=SUBPROCESS_ENV)
 run = partial(subprocess.run, env=SUBPROCESS_ENV)
 
-xfail_if_no_git = pytest.mark.xfail(call("git version") != 0, reason="git is not installed")
+xfail_if_no_git = pytest.mark.xfail(
+    call("git version") != 0, reason="git is not installed"
+)
 
-xfail_if_no_hg = pytest.mark.xfail(call("hg version") != 0, reason="hg is not installed")
+xfail_if_no_hg = pytest.mark.xfail(
+    call("hg version") != 0, reason="hg is not installed"
+)
 
 VCS_GIT = pytest.param("git", marks=xfail_if_no_git())
 VCS_MERCURIAL = pytest.param("hg", marks=xfail_if_no_hg())
@@ -109,7 +114,7 @@ xfail_if_old_configparser = pytest.mark.xfail(
 )
 
 
-def _mock_calls_to_string(called_mock) -> List[str]:
+def _mock_calls_to_string(called_mock) -> list[str]:
     return [
         "{}|{}|{}".format(
             name,
@@ -223,7 +228,7 @@ def test_usage_string(tmp_dir: Path, capsys) -> None:
     assert err == ""
 
     for option_line in EXPECTED_OPTIONS:
-        assert option_line in out, "Usage string is missing {}".format(option_line)
+        assert option_line in out, f"Usage string is missing {option_line}"
     assert EXPECTED_USAGE in _maybe_out(out)
 
 
@@ -239,7 +244,9 @@ def test_usage_string_fork(tmp_dir):
         )
 
     try:
-        output = check_output("bumpversion --help", shell=True, stderr=subprocess.STDOUT)
+        output = check_output(
+            "bumpversion --help", shell=True, stderr=subprocess.STDOUT
+        )
     except subprocess.CalledProcessError as e:
         output = e.output
 
@@ -262,7 +269,7 @@ def test_regression_help_in_work_dir(tmp_dir, capsys, vcs):
     out, err = capsys.readouterr()
 
     for option_line in EXPECTED_OPTIONS:
-        assert option_line in out, "Usage string is missing {}".format(option_line)
+        assert option_line in out, f"Usage string is missing {option_line}"
 
     if vcs == "git":
         assert "Version that needs to be updated (default: 1.7.2013)" in out
@@ -484,7 +491,7 @@ def test_dry_run_verbose_log(tmp_dir, vcs):
     p_parts = patch.split(".")
     file = "file4"
     message = "DO NOT BUMP VERSIONS WITH THIS FILE"
-    config = """[bumpversion]
+    config = f"""[bumpversion]
 current_version = {version}
 tag = True
 commit = True
@@ -492,7 +499,7 @@ message = {message}
 
 [bumpversion:file:{file}]
 
-""".format(version=version, file=file, message=message)
+"""
 
     bumpcfg = ".bumpversion.cfg"
     tmp_dir.joinpath(file).write_text(version)
@@ -509,29 +516,23 @@ message = {message}
     vcs_name = "Mercurial" if vcs == "hg" else "Git"
     log_capture.check_present(
         # generic --verbose entries
-        ("bumpversion.cli", "INFO", "Reading config file {}:".format(bumpcfg)),
+        ("bumpversion.cli", "INFO", f"Reading config file {bumpcfg}:"),
         ("bumpversion.cli", "INFO", config),
         (
             "bumpversion.version_part",
             "INFO",
-            "Parsing version '{}' using regexp '(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)'".format(
-                version
-            ),
+            f"Parsing version '{version}' using regexp '(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)'",
         ),
         (
             "bumpversion.version_part",
             "INFO",
-            "Parsed the following values: major={}, minor={}, patch={}".format(
-                v_parts[0], v_parts[1], v_parts[2]
-            ),
+            f"Parsed the following values: major={v_parts[0]}, minor={v_parts[1]}, patch={v_parts[2]}",
         ),
         ("bumpversion.cli", "INFO", "Attempting to increment part 'patch'"),
         (
             "bumpversion.cli",
             "INFO",
-            "Values are now: major={}, minor={}, patch={}".format(
-                p_parts[0], p_parts[1], p_parts[2]
-            ),
+            f"Values are now: major={p_parts[0]}, minor={p_parts[1]}, patch={p_parts[2]}",
         ),
         (
             "bumpversion.cli",
@@ -541,73 +542,67 @@ message = {message}
         (
             "bumpversion.version_part",
             "INFO",
-            "Parsing version '{}' using regexp '(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)'".format(
-                patch
-            ),
+            f"Parsing version '{patch}' using regexp '(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)'",
         ),
         (
             "bumpversion.version_part",
             "INFO",
-            "Parsed the following values: major={}, minor={}, patch={}".format(
-                p_parts[0], p_parts[1], p_parts[2]
-            ),
+            f"Parsed the following values: major={p_parts[0]}, minor={p_parts[1]}, patch={p_parts[2]}",
         ),
-        ("bumpversion.cli", "INFO", "New version will be '{}'".format(patch)),
+        ("bumpversion.cli", "INFO", f"New version will be '{patch}'"),
         (
             "bumpversion.cli",
             "INFO",
-            "Asserting files {} contain the version string...".format(file),
+            f"Asserting files {file} contain the version string...",
         ),
         (
             "bumpversion.utils",
             "INFO",
-            "Found '{v}' in {f} at line 0: {v}".format(v=version, f=file),
+            f"Found '{version}' in {file} at line 0: {version}",
         ),  # verbose
         (
             "bumpversion.utils",
             "INFO",
-            "Would change file {}:".format(file),
+            f"Would change file {file}:",
         ),  # dry-run change to 'would'
         (
             "bumpversion.utils",
             "INFO",
-            "--- a/{f}\n+++ b/{f}\n@@ -1 +1 @@\n-{v}\n+{p}".format(f=file, v=version, p=patch),
+            f"--- a/{file}\n+++ b/{file}\n@@ -1 +1 @@\n-{version}\n+{patch}",
         ),
-        ("bumpversion.list", "INFO", "current_version={}".format(version)),
+        ("bumpversion.list", "INFO", f"current_version={version}"),
         ("bumpversion.list", "INFO", "tag=True"),
         ("bumpversion.list", "INFO", "commit=True"),
-        ("bumpversion.list", "INFO", "message={}".format(message)),
-        ("bumpversion.list", "INFO", "new_version={}".format(patch)),
+        ("bumpversion.list", "INFO", f"message={message}"),
+        ("bumpversion.list", "INFO", f"new_version={patch}"),
         (
             "bumpversion.cli",
             "INFO",
-            "Would write to config file {}:".format(bumpcfg),
+            f"Would write to config file {bumpcfg}:",
         ),  # dry-run 'would'
         ("bumpversion.cli", "INFO", config.replace(version, patch)),
         # following entries are only present if both --verbose and --dry-run are specified
         # all entries use 'would do x' variants instead of 'doing x'
-        ("bumpversion.cli", "INFO", "Would prepare {vcs} commit".format(vcs=vcs_name)),
+        ("bumpversion.cli", "INFO", f"Would prepare {vcs_name} commit"),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '{file}' to {vcs}".format(file=file, vcs=vcs_name),
+            f"Would add changes in file '{file}' to {vcs_name}",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '{file}' to {vcs}".format(file=bumpcfg, vcs=vcs_name),
+            f"Would add changes in file '{bumpcfg}' to {vcs_name}",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would commit to {vcs} with message '{msg}'".format(msg=message, vcs=vcs_name),
+            f"Would commit to {vcs_name} with message '{message}'",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would tag 'v{p}' with message 'Bump version: {v} → {p}' in {vcs} and not signing".format(
-                v=version, p=patch, vcs=vcs_name
-            ),
+            f"Would tag 'v{patch}' with message 'Bump version: {version} → {patch}' in {vcs_name} and not signing",
         ),
         order_matters=True,
     )
@@ -673,7 +668,9 @@ def test_bumpversion_custom_parse_semver(tmp_dir):
 
 def test_bump_version_missing_part(tmp_dir):
     tmp_dir.joinpath("file5").write_text("1.0.0")
-    with pytest.raises(exceptions.InvalidVersionPartException, match="No part named 'bugfix'"):
+    with pytest.raises(
+        exceptions.InvalidVersionPartException, match="No part named 'bugfix'"
+    ):
         main(["bugfix", "--current-version", "1.0.0", "file5"])
 
 
@@ -693,12 +690,10 @@ def test_dirty_work_dir(tmp_dir, vcs):
         (
             "bumpversion.cli",
             "WARNING",
-            "{} working directory is not clean:\n"
-            "{}\n"
+            f"{vcs_name} working directory is not clean:\n"
+            f"{vcs_output}\n"
             "\n"
-            "Use --allow-dirty to override this if you know what you're doing.".format(
-                vcs_name, vcs_output
-            ),
+            "Use --allow-dirty to override this if you know what you're doing.",
         )
     )
 
@@ -1038,13 +1033,21 @@ def test_override_vcs_current_version(tmp_dir, git):
 
 def test_non_existing_file(tmp_dir):
     with pytest.raises(IOError):
-        main(shlex_split("patch --current-version 1.2.0 --new-version 1.2.1 does_not_exist.txt"))
+        main(
+            shlex_split(
+                "patch --current-version 1.2.0 --new-version 1.2.1 does_not_exist.txt"
+            )
+        )
 
 
 def test_non_existing_second_file(tmp_dir):
     tmp_dir.joinpath("my_source_code.txt").write_text("1.2.3")
     with pytest.raises(IOError):
-        main(shlex_split("patch --current-version 1.2.3 my_source_code.txt does_not_exist2.txt"))
+        main(
+            shlex_split(
+                "patch --current-version 1.2.3 my_source_code.txt does_not_exist2.txt"
+            )
+        )
 
     # first file is unchanged because second didn't exist
     assert tmp_dir.joinpath("my_source_code.txt").read_text() == "1.2.3"
@@ -1147,11 +1150,14 @@ tag_name: from-{current_version}-aka-{current_major}.{current_minor}.{current_pa
     main(["major", "VERSION"])
 
     log = check_output([vcs, "log", "-p"])
-    assert b"400.1.2.101/400.1.2 custom 101 becomes 401.2.3.102/401.2.3 custom 102" in log
+    assert (
+        b"400.1.2.101/400.1.2 custom 101 becomes 401.2.3.102/401.2.3 custom 102" in log
+    )
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
     assert (
-        b"from-400.1.2.101-aka-400.1.2-custom-101-to-401.2.3.102-aka-401.2.3-custom-102" in tag_out
+        b"from-400.1.2.101-aka-400.1.2-custom-101-to-401.2.3.102-aka-401.2.3-custom-102"
+        in tag_out
     )
 
 
@@ -1327,7 +1333,10 @@ message = Nová verze: {current_version} ☃, {new_version} ☀
     main(["major", "VERSION"])
     check_output([vcs, "log", "-p"])
     expected_new_config = initial_config.replace("500", "501")
-    assert expected_new_config.encode() == tmp_dir.joinpath(".bumpversion.cfg").read_bytes()
+    assert (
+        expected_new_config.encode()
+        == tmp_dir.joinpath(".bumpversion.cfg").read_bytes()
+    )
 
 
 def test_utf8_message_from_config_file_2(tmp_dir, vcs):
@@ -1394,7 +1403,9 @@ def test_serialize_newline(tmp_dir):
             "file_new_line",
         ]
     )
-    assert tmp_dir.joinpath("file_new_line").read_text() == "MAJOR=32\nMINOR=0\nPATCH=0\n"
+    assert (
+        tmp_dir.joinpath("file_new_line").read_text() == "MAJOR=32\nMINOR=0\nPATCH=0\n"
+    )
 
 
 def test_multiple_serialize_three_part(tmp_dir):
@@ -1802,30 +1813,26 @@ def test_subjunctive_dry_run_logging(tmp_dir, vcs):
             "INFO",
             "[bumpversion]\ncurrent_version = 0.8.1\ncommit = True\ntag = True\nserialize = \n\t{major}.{minor}.{patch}\n\t{major}.{minor}\nparse = (?P<major>\\d+)\\.(?P<minor>\\d+)(\\.(?P<patch>\\d+))?\n\n[bumpversion:file:dont_touch_me.txt]\n\n",
         ),
-        ("bumpversion.cli", "INFO", "Would prepare {vcs} commit".format(vcs=vcs_name)),
+        ("bumpversion.cli", "INFO", f"Would prepare {vcs_name} commit"),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file 'dont_touch_me.txt' to {vcs}".format(vcs=vcs_name),
+            f"Would add changes in file 'dont_touch_me.txt' to {vcs_name}",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '.bumpversion.cfg' to {vcs}".format(vcs=vcs_name),
+            f"Would add changes in file '.bumpversion.cfg' to {vcs_name}",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would commit to {vcs} with message 'Bump version: 0.8 \u2192 0.8.1'".format(
-                vcs=vcs_name
-            ),
+            f"Would commit to {vcs_name} with message 'Bump version: 0.8 \u2192 0.8.1'",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would tag 'v0.8.1' with message 'Bump version: 0.8 \u2192 0.8.1' in {vcs} and not signing".format(
-                vcs=vcs_name
-            ),
+            f"Would tag 'v0.8.1' with message 'Bump version: 0.8 \u2192 0.8.1' in {vcs_name} and not signing",
         ),
     )
 
@@ -1908,30 +1915,26 @@ def test_log_commit_message_if_no_commit_tag_but_usable_vcs(tmp_dir, vcs):
             "INFO",
             "[bumpversion]\ncurrent_version = 0.3.4\ncommit = False\ntag = False\n\n[bumpversion:file:please_touch_me.txt]\n\n",
         ),
-        ("bumpversion.cli", "INFO", "Would prepare {vcs} commit".format(vcs=vcs_name)),
+        ("bumpversion.cli", "INFO", f"Would prepare {vcs_name} commit"),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file 'please_touch_me.txt' to {vcs}".format(vcs=vcs_name),
+            f"Would add changes in file 'please_touch_me.txt' to {vcs_name}",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '.bumpversion.cfg' to {vcs}".format(vcs=vcs_name),
+            f"Would add changes in file '.bumpversion.cfg' to {vcs_name}",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would commit to {vcs} with message 'Bump version: 0.3.3 \u2192 0.3.4'".format(
-                vcs=vcs_name
-            ),
+            f"Would commit to {vcs_name} with message 'Bump version: 0.3.3 \u2192 0.3.4'",
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would tag 'v0.3.4' with message 'Bump version: 0.3.3 \u2192 0.3.4' in {vcs} and not signing".format(
-                vcs=vcs_name
-            ),
+            f"Would tag 'v0.3.4' with message 'Bump version: 0.3.3 \u2192 0.3.4' in {vcs_name} and not signing",
         ),
     )
 
@@ -2209,7 +2212,9 @@ def test_multi_file_configuration2(tmp_dir):
 
 
 def test_search_replace_to_avoid_updating_unconcerned_lines(tmp_dir):
-    tmp_dir.joinpath("requirements.txt").write_text("Django>=1.5.6,<1.6\nMyProject==1.5.6")
+    tmp_dir.joinpath("requirements.txt").write_text(
+        "Django>=1.5.6,<1.6\nMyProject==1.5.6"
+    )
     tmp_dir.joinpath("CHANGELOG.md").write_text(
         dedent("""
     # https://keepachangelog.com/en/1.0.0/
@@ -2410,7 +2415,9 @@ def test_non_matching_search_does_not_modify_file(tmp_dir):
 
 
 def test_search_replace_cli(tmp_dir):
-    tmp_dir.joinpath("file89").write_text("My birthday: 3.5.98\nCurrent version: 3.5.98")
+    tmp_dir.joinpath("file89").write_text(
+        "My birthday: 3.5.98\nCurrent version: 3.5.98"
+    )
     main(
         [
             "--current-version",
@@ -2424,7 +2431,10 @@ def test_search_replace_cli(tmp_dir):
         ]
     )
 
-    assert tmp_dir.joinpath("file89").read_text() == "My birthday: 3.5.98\nCurrent version: 3.6.0"
+    assert (
+        tmp_dir.joinpath("file89").read_text()
+        == "My birthday: 3.5.98\nCurrent version: 3.6.0"
+    )
 
 
 def test_deprecation_warning_files_in_global_configuration(tmp_dir):
@@ -2465,7 +2475,9 @@ def test_deprecation_warning_multiple_files_cli(tmp_dir):
 
     w = received_warnings.pop()
     assert issubclass(w.category, PendingDeprecationWarning)
-    assert "Giving multiple files on the command line will be deprecated" in str(w.message)
+    assert "Giving multiple files on the command line will be deprecated" in str(
+        w.message
+    )
 
 
 def test_file_specific_config_inherits_parse_serialize(tmp_dir):
@@ -2739,7 +2751,8 @@ def test_correct_interpolation_for_setup_cfg_files(tmp_dir, configfile):
     main(["major"])
 
     assert (
-        datetime.now().strftime("%m-%d-%Y") + " v. 1.0.0" == tmp_dir.joinpath("file.py").read_text()
+        datetime.now().strftime("%m-%d-%Y") + " v. 1.0.0"
+        == tmp_dir.joinpath("file.py").read_text()
     )
     assert "current_version = 1.0.0" in tmp_dir.joinpath(configfile).read_text()
 

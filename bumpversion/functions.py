@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 
@@ -31,7 +33,7 @@ class NumericFunction(Function):
                 _, _, _ = self.FIRST_NUMERIC.search(first_value).groups()  # type:ignore
             except AttributeError:
                 raise ValueError(
-                    "The given first value {} does not contain any digit".format(first_value)
+                    f"The given first value {first_value} does not contain any digit"
                 ) from None
         else:
             first_value = 0
@@ -58,7 +60,9 @@ class ValuesFunction(Function):
     you get a ValueError exception.
     """
 
-    def __init__(self, values, optional_value=None, first_value=None, independent=False) -> None:
+    def __init__(
+        self, values, optional_value=None, first_value=None, independent=False
+    ) -> None:
         if not values:
             raise ValueError("Version part values cannot be empty") from None
 
@@ -69,7 +73,7 @@ class ValuesFunction(Function):
 
         if optional_value not in values:
             raise ValueError(
-                "Optional value {} must be included in values {}".format(optional_value, values)
+                f"Optional value {optional_value} must be included in values {values}"
             ) from None
 
         self.optional_value = optional_value
@@ -79,7 +83,7 @@ class ValuesFunction(Function):
 
         if first_value not in values:
             raise ValueError(
-                "First value {} must be included in values {}".format(first_value, values)
+                f"First value {first_value} must be included in values {values}"
             ) from None
 
         self.first_value = first_value
@@ -90,7 +94,5 @@ class ValuesFunction(Function):
             return self._values[self._values.index(value) + 1]
         except IndexError:
             raise ValueError(
-                "The part has already the maximum value among {} and cannot be bumped.".format(
-                    self._values
-                )
+                f"The part has already the maximum value among {self._values} and cannot be bumped."
             ) from None

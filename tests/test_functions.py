@@ -1,4 +1,5 @@
 import pytest
+
 from bumpversion.functions import NumericFunction, ValuesFunction
 
 # NumericFunction

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import logging
 import os
 import re
 from argparse import _AppendAction
 from difflib import unified_diff
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from bumpversion.exceptions import VersionNotFoundException
 
@@ -28,11 +30,11 @@ class DiscardDefaultIfSpecifiedAppendAction(_AppendAction):
 
 
 def keyvaluestring(d: dict) -> str:
-    return ", ".join("{}={}".format(k, v) for k, v in sorted(d.items()))
+    return ", ".join(f"{k}={v}" for k, v in sorted(d.items()))
 
 
-def prefixed_environ() -> Dict[str, str]:
-    return {"${}".format(key): value for key, value in os.environ.items()}
+def prefixed_environ() -> dict[str, str]:
+    return {f"${key}": value for key, value in os.environ.items()}
 
 
 class ConfiguredFile:
@@ -67,14 +69,14 @@ class ConfiguredFile:
 
         # version not found
         raise VersionNotFoundException(
-            "Did not find '{}' in file: '{}'".format(search_expression, self.path)
+            f"Did not find '{search_expression}' in file: '{self.path}'"
         )
 
-    def contains(self, search: Optional[str]) -> bool:
+    def contains(self, search: str | None) -> bool:
         if not search:
             return False
 
-        with open(self.path, "rt", encoding="utf-8") as f:
+        with open(self.path, encoding="utf-8") as f:
             search_lines = search.splitlines()
             lookbehind = []
 
@@ -101,16 +103,18 @@ class ConfiguredFile:
 
     def replace(
         self,
-        current_version: "Version",
-        new_version: "Version",
+        current_version: Version,
+        new_version: Version,
         context: dict,
         dry_run: bool,
     ) -> None:
-        with open(self.path, "rt", encoding="utf-8") as f:
+        with open(self.path, encoding="utf-8") as f:
             file_content_before = f.read()
             file_new_lines = f.newlines
 
-        context["current_version"] = self._versionconfig.serialize(current_version, context)
+        context["current_version"] = self._versionconfig.serialize(
+            current_version, context
+        )
         context["new_version"] = self._versionconfig.serialize(new_version, context)
 
         search_for = self._versionconfig.search.format(**context)
@@ -127,9 +131,13 @@ class ConfiguredFile:
 
         if file_content_before == file_content_after:
             # TODO expose this to be configurable
-            file_content_after = file_content_before.replace(current_version.original, replace_with)
+            file_content_after = file_content_before.replace(
+                current_version.original, replace_with
+            )
         if file_content_before != file_content_after:
-            logger.info("%s file %s:", "Would change" if dry_run else "Changing", self.path)
+            logger.info(
+                "%s file %s:", "Would change" if dry_run else "Changing", self.path
+            )
             logger.info(
                 "\n".join(
                     list(
@@ -151,12 +159,16 @@ class ConfiguredFile:
             )
 
         if not dry_run:
-            linesep = file_new_lines[0] if isinstance(file_new_lines, tuple) else file_new_lines
-            with open(self.path, "wt", encoding="utf-8", newline=linesep) as f:
+            linesep = (
+                file_new_lines[0]
+                if isinstance(file_new_lines, tuple)
+                else file_new_lines
+            )
+            with open(self.path, "w", encoding="utf-8", newline=linesep) as f:
                 f.write(file_content_after)
 
     def __str__(self) -> str:
         return self.path
 
     def __repr__(self) -> str:
-        return "<bumpversion.ConfiguredFile:{}>".format(self.path)
+        return f"<bumpversion.ConfiguredFile:{self.path}>"
