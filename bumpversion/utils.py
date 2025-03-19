@@ -110,9 +110,7 @@ class ConfiguredFile:
             file_content_before = f.read()
             file_new_lines = f.newlines
 
-        context["current_version"] = self._versionconfig.serialize(
-            current_version, context
-        )
+        context["current_version"] = self._versionconfig.serialize(current_version, context)
         context["new_version"] = self._versionconfig.serialize(new_version, context)
 
         search_for = self._versionconfig.search.format(**context)
@@ -129,13 +127,9 @@ class ConfiguredFile:
 
         if file_content_before == file_content_after:
             # TODO expose this to be configurable
-            file_content_after = file_content_before.replace(
-                current_version.original, replace_with
-            )
+            file_content_after = file_content_before.replace(current_version.original, replace_with)
         if file_content_before != file_content_after:
-            logger.info(
-                "%s file %s:", "Would change" if dry_run else "Changing", self.path
-            )
+            logger.info("%s file %s:", "Would change" if dry_run else "Changing", self.path)
             logger.info(
                 "\n".join(
                     list(
@@ -157,11 +151,7 @@ class ConfiguredFile:
             )
 
         if not dry_run:
-            linesep = (
-                file_new_lines[0]
-                if isinstance(file_new_lines, tuple)
-                else file_new_lines
-            )
+            linesep = file_new_lines[0] if isinstance(file_new_lines, tuple) else file_new_lines
             with open(self.path, "wt", encoding="utf-8", newline=linesep) as f:
                 f.write(file_content_after)
 

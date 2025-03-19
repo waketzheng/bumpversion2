@@ -27,9 +27,7 @@ class BaseVCS:
         for key in ("current_version", "new_version"):
             env[str("BUMPVERSION_" + key.upper())] = str(context[key])
         try:
-            subprocess.check_output(
-                cls._COMMIT_COMMAND + [f.name] + extra_args, env=env
-            )
+            subprocess.check_output(cls._COMMIT_COMMAND + [f.name] + extra_args, env=env)
         except subprocess.CalledProcessError as exc:
             err_msg = "Failed to run {}: return code {}, output: {}".format(
                 exc.cmd, exc.returncode, exc.output
@@ -64,17 +62,13 @@ class Git(BaseVCS):
     def assert_nondirty(cls) -> None:
         lines = [
             line.strip()
-            for line in subprocess.check_output(
-                ["git", "status", "--porcelain"]
-            ).splitlines()
+            for line in subprocess.check_output(["git", "status", "--porcelain"]).splitlines()
             if not line.strip().startswith(b"??")
         ]
 
         if lines:
             raise WorkingDirectoryIsDirtyException(
-                "Git working directory is not clean:\n{}".format(
-                    b"\n".join(lines).decode()
-                )
+                "Git working directory is not clean:\n{}".format(b"\n".join(lines).decode())
             )
 
     @classmethod
@@ -154,9 +148,7 @@ class Mercurial(BaseVCS):
 
         if lines:
             raise WorkingDirectoryIsDirtyException(
-                "Mercurial working directory is not clean:\n{}".format(
-                    b"\n".join(lines).decode()
-                )
+                "Mercurial working directory is not clean:\n{}".format(b"\n".join(lines).decode())
             )
 
     @classmethod

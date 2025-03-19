@@ -13,12 +13,11 @@ from shlex import split as shlex_split
 from textwrap import dedent
 from typing import Generator, List
 
-import pytest
-from testfixtures import LogCapture
-
 import bumpversion
+import pytest
 from bumpversion import exceptions
 from bumpversion.cli import DESCRIPTION, main, split_args_in_optional_and_positional
+from testfixtures import LogCapture
 
 if sys.version_info >= (3, 11):
     from contextlib import chdir
@@ -52,13 +51,9 @@ check_call = partial(subprocess.check_call, env=SUBPROCESS_ENV)
 check_output = partial(subprocess.check_output, env=SUBPROCESS_ENV)
 run = partial(subprocess.run, env=SUBPROCESS_ENV)
 
-xfail_if_no_git = pytest.mark.xfail(
-    call("git version") != 0, reason="git is not installed"
-)
+xfail_if_no_git = pytest.mark.xfail(call("git version") != 0, reason="git is not installed")
 
-xfail_if_no_hg = pytest.mark.xfail(
-    call("hg version") != 0, reason="hg is not installed"
-)
+xfail_if_no_hg = pytest.mark.xfail(call("hg version") != 0, reason="hg is not installed")
 
 VCS_GIT = pytest.param("git", marks=xfail_if_no_git())
 VCS_MERCURIAL = pytest.param("hg", marks=xfail_if_no_hg())
@@ -244,9 +239,7 @@ def test_usage_string_fork(tmp_dir):
         )
 
     try:
-        output = check_output(
-            "bumpversion --help", shell=True, stderr=subprocess.STDOUT
-        )
+        output = check_output("bumpversion --help", shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         output = e.output
 
@@ -578,9 +571,7 @@ message = {message}
         (
             "bumpversion.utils",
             "INFO",
-            "--- a/{f}\n+++ b/{f}\n@@ -1 +1 @@\n-{v}\n+{p}".format(
-                f=file, v=version, p=patch
-            ),
+            "--- a/{f}\n+++ b/{f}\n@@ -1 +1 @@\n-{v}\n+{p}".format(f=file, v=version, p=patch),
         ),
         ("bumpversion.list", "INFO", "current_version={}".format(version)),
         ("bumpversion.list", "INFO", "tag=True"),
@@ -599,23 +590,17 @@ message = {message}
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '{file}' to {vcs}".format(
-                file=file, vcs=vcs_name
-            ),
+            "Would add changes in file '{file}' to {vcs}".format(file=file, vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '{file}' to {vcs}".format(
-                file=bumpcfg, vcs=vcs_name
-            ),
+            "Would add changes in file '{file}' to {vcs}".format(file=bumpcfg, vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would commit to {vcs} with message '{msg}'".format(
-                msg=message, vcs=vcs_name
-            ),
+            "Would commit to {vcs} with message '{msg}'".format(msg=message, vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
@@ -688,9 +673,7 @@ def test_bumpversion_custom_parse_semver(tmp_dir):
 
 def test_bump_version_missing_part(tmp_dir):
     tmp_dir.joinpath("file5").write_text("1.0.0")
-    with pytest.raises(
-        exceptions.InvalidVersionPartException, match="No part named 'bugfix'"
-    ):
+    with pytest.raises(exceptions.InvalidVersionPartException, match="No part named 'bugfix'"):
         main(["bugfix", "--current-version", "1.0.0", "file5"])
 
 
@@ -1055,21 +1038,13 @@ def test_override_vcs_current_version(tmp_dir, git):
 
 def test_non_existing_file(tmp_dir):
     with pytest.raises(IOError):
-        main(
-            shlex_split(
-                "patch --current-version 1.2.0 --new-version 1.2.1 does_not_exist.txt"
-            )
-        )
+        main(shlex_split("patch --current-version 1.2.0 --new-version 1.2.1 does_not_exist.txt"))
 
 
 def test_non_existing_second_file(tmp_dir):
     tmp_dir.joinpath("my_source_code.txt").write_text("1.2.3")
     with pytest.raises(IOError):
-        main(
-            shlex_split(
-                "patch --current-version 1.2.3 my_source_code.txt does_not_exist2.txt"
-            )
-        )
+        main(shlex_split("patch --current-version 1.2.3 my_source_code.txt does_not_exist2.txt"))
 
     # first file is unchanged because second didn't exist
     assert tmp_dir.joinpath("my_source_code.txt").read_text() == "1.2.3"
@@ -1172,14 +1147,11 @@ tag_name: from-{current_version}-aka-{current_major}.{current_minor}.{current_pa
     main(["major", "VERSION"])
 
     log = check_output([vcs, "log", "-p"])
-    assert (
-        b"400.1.2.101/400.1.2 custom 101 becomes 401.2.3.102/401.2.3 custom 102" in log
-    )
+    assert b"400.1.2.101/400.1.2 custom 101 becomes 401.2.3.102/401.2.3 custom 102" in log
 
     tag_out = check_output([vcs, {"git": "tag", "hg": "tags"}[vcs]])
     assert (
-        b"from-400.1.2.101-aka-400.1.2-custom-101-to-401.2.3.102-aka-401.2.3-custom-102"
-        in tag_out
+        b"from-400.1.2.101-aka-400.1.2-custom-101-to-401.2.3.102-aka-401.2.3-custom-102" in tag_out
     )
 
 
@@ -1355,10 +1327,7 @@ message = Nová verze: {current_version} ☃, {new_version} ☀
     main(["major", "VERSION"])
     check_output([vcs, "log", "-p"])
     expected_new_config = initial_config.replace("500", "501")
-    assert (
-        expected_new_config.encode()
-        == tmp_dir.joinpath(".bumpversion.cfg").read_bytes()
-    )
+    assert expected_new_config.encode() == tmp_dir.joinpath(".bumpversion.cfg").read_bytes()
 
 
 def test_utf8_message_from_config_file_2(tmp_dir, vcs):
@@ -1425,9 +1394,7 @@ def test_serialize_newline(tmp_dir):
             "file_new_line",
         ]
     )
-    assert (
-        tmp_dir.joinpath("file_new_line").read_text() == "MAJOR=32\nMINOR=0\nPATCH=0\n"
-    )
+    assert tmp_dir.joinpath("file_new_line").read_text() == "MAJOR=32\nMINOR=0\nPATCH=0\n"
 
 
 def test_multiple_serialize_three_part(tmp_dir):
@@ -1839,16 +1806,12 @@ def test_subjunctive_dry_run_logging(tmp_dir, vcs):
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file 'dont_touch_me.txt' to {vcs}".format(
-                vcs=vcs_name
-            ),
+            "Would add changes in file 'dont_touch_me.txt' to {vcs}".format(vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '.bumpversion.cfg' to {vcs}".format(
-                vcs=vcs_name
-            ),
+            "Would add changes in file '.bumpversion.cfg' to {vcs}".format(vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
@@ -1949,16 +1912,12 @@ def test_log_commit_message_if_no_commit_tag_but_usable_vcs(tmp_dir, vcs):
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file 'please_touch_me.txt' to {vcs}".format(
-                vcs=vcs_name
-            ),
+            "Would add changes in file 'please_touch_me.txt' to {vcs}".format(vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
             "INFO",
-            "Would add changes in file '.bumpversion.cfg' to {vcs}".format(
-                vcs=vcs_name
-            ),
+            "Would add changes in file '.bumpversion.cfg' to {vcs}".format(vcs=vcs_name),
         ),
         (
             "bumpversion.cli",
@@ -2250,9 +2209,7 @@ def test_multi_file_configuration2(tmp_dir):
 
 
 def test_search_replace_to_avoid_updating_unconcerned_lines(tmp_dir):
-    tmp_dir.joinpath("requirements.txt").write_text(
-        "Django>=1.5.6,<1.6\nMyProject==1.5.6"
-    )
+    tmp_dir.joinpath("requirements.txt").write_text("Django>=1.5.6,<1.6\nMyProject==1.5.6")
     tmp_dir.joinpath("CHANGELOG.md").write_text(
         dedent("""
     # https://keepachangelog.com/en/1.0.0/
@@ -2453,9 +2410,7 @@ def test_non_matching_search_does_not_modify_file(tmp_dir):
 
 
 def test_search_replace_cli(tmp_dir):
-    tmp_dir.joinpath("file89").write_text(
-        "My birthday: 3.5.98\nCurrent version: 3.5.98"
-    )
+    tmp_dir.joinpath("file89").write_text("My birthday: 3.5.98\nCurrent version: 3.5.98")
     main(
         [
             "--current-version",
@@ -2469,10 +2424,7 @@ def test_search_replace_cli(tmp_dir):
         ]
     )
 
-    assert (
-        tmp_dir.joinpath("file89").read_text()
-        == "My birthday: 3.5.98\nCurrent version: 3.6.0"
-    )
+    assert tmp_dir.joinpath("file89").read_text() == "My birthday: 3.5.98\nCurrent version: 3.6.0"
 
 
 def test_deprecation_warning_files_in_global_configuration(tmp_dir):
@@ -2513,9 +2465,7 @@ def test_deprecation_warning_multiple_files_cli(tmp_dir):
 
     w = received_warnings.pop()
     assert issubclass(w.category, PendingDeprecationWarning)
-    assert "Giving multiple files on the command line will be deprecated" in str(
-        w.message
-    )
+    assert "Giving multiple files on the command line will be deprecated" in str(w.message)
 
 
 def test_file_specific_config_inherits_parse_serialize(tmp_dir):
@@ -2752,7 +2702,7 @@ def test_regression_new_version_cli_in_files(tmp_dir):
         """).strip()
     )
 
-    main("patch --allow-dirty --verbose --new-version 0.9.3".split(" "))
+    main(["patch", "--allow-dirty", "--verbose", "--new-version", "0.9.3"])
 
     assert tmp_dir.joinpath("myp___init__.py").read_text() == "__version__ = '0.9.3'"
     assert "current_version = 0.9.3" in tmp_dir.joinpath(".bumpversion.cfg").read_text()
@@ -2789,8 +2739,7 @@ def test_correct_interpolation_for_setup_cfg_files(tmp_dir, configfile):
     main(["major"])
 
     assert (
-        datetime.now().strftime("%m-%d-%Y") + " v. 1.0.0"
-        == tmp_dir.joinpath("file.py").read_text()
+        datetime.now().strftime("%m-%d-%Y") + " v. 1.0.0" == tmp_dir.joinpath("file.py").read_text()
     )
     assert "current_version = 1.0.0" in tmp_dir.joinpath(configfile).read_text()
 

@@ -83,8 +83,8 @@ def main(original_args=None) -> None:
     if hasattr(known_args, "config_file"):
         explicit_config = known_args.config_file
     config_file = _determine_config_file(explicit_config)
-    config, config_file_exists, config_newlines, part_configs, files = (
-        _load_configuration(config_file, explicit_config, defaults)
+    config, config_file_exists, config_newlines, part_configs, files = _load_configuration(
+        config_file, explicit_config, defaults
     )
     known_args, parser2, remaining_argv = _parse_arguments_phase_2(
         args, known_args, defaults, root_parser
@@ -109,9 +109,7 @@ def main(original_args=None) -> None:
         positionals,
         version_config,
     )
-    args, file_names = _parse_arguments_phase_3(
-        remaining_argv, positionals, defaults, parser2
-    )
+    args, file_names = _parse_arguments_phase_3(remaining_argv, positionals, defaults, parser2)
     new_version = _parse_new_version(args, new_version, version_config)
 
     # do not use the files from the config
@@ -121,13 +119,10 @@ def main(original_args=None) -> None:
     # replace version in target files
     vcs = _determine_vcs_dirty(VCS, defaults)
     files.extend(
-        ConfiguredFile(file_name, version_config)
-        for file_name in (file_names or positionals[1:])
+        ConfiguredFile(file_name, version_config) for file_name in (file_names or positionals[1:])
     )
     _check_files_contain_version(files, current_version, context)
-    _replace_version_in_files(
-        files, current_version, new_version, args.dry_run, context
-    )
+    _replace_version_in_files(files, current_version, new_version, args.dry_run, context)
     _log_list(config, args.new_version)
 
     # store the new version
@@ -166,9 +161,7 @@ def split_args_in_optional_and_positional(args):
         if i > 0:
             previous = args[i - 1]
 
-        if (not arg.startswith("-")) and (
-            previous not in OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES
-        ):
+        if (not arg.startswith("-")) and (previous not in OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES):
             positions.append(i)
 
     positionals = [arg for i, arg in enumerate(args) if i in positions]
@@ -307,9 +300,7 @@ def _load_configuration(config_file, explicit_config, defaults):
     for listvaluename in ("serialize",):
         try:
             value = config.get("bumpversion", listvaluename)
-            defaults[listvaluename] = list(
-                filter(None, (x.strip() for x in value.splitlines()))
-            )
+            defaults[listvaluename] = list(filter(None, (x.strip() for x in value.splitlines())))
         except NoOptionError:
             pass  # no default value then ;)
 
@@ -343,9 +334,7 @@ def _load_configuration(config_file, explicit_config, defaults):
                 ThisVersionPartConfiguration = ConfiguredVersionPartConfiguration
 
             if config.has_option(section_name, "independent"):
-                section_config["independent"] = config.getboolean(
-                    section_name, "independent"
-                )
+                section_config["independent"] = config.getboolean(section_name, "independent")
 
             part_configs[section_value] = ThisVersionPartConfiguration(**section_config)
         elif section_type.get("file"):
@@ -370,9 +359,7 @@ def _load_configuration(config_file, explicit_config, defaults):
                 )
 
             if "serialize" not in section_config:
-                section_config["serialize"] = defaults.get(
-                    "serialize", ["{major}.{minor}.{patch}"]
-                )
+                section_config["serialize"] = defaults.get("serialize", ["{major}.{minor}.{patch}"])
 
             if "search" not in section_config:
                 section_config["search"] = defaults.get("search", "{current_version}")
@@ -390,9 +377,7 @@ def _load_configuration(config_file, explicit_config, defaults):
 
 
 def _parse_arguments_phase_2(args, known_args, defaults, root_parser):
-    parser2 = argparse.ArgumentParser(
-        prog="bumpversion", add_help=False, parents=[root_parser]
-    )
+    parser2 = argparse.ArgumentParser(prog="bumpversion", add_help=False, parents=[root_parser])
     parser2.set_defaults(**defaults)
     parser2.add_argument(
         "--current-version",
@@ -404,9 +389,7 @@ def _parse_arguments_phase_2(args, known_args, defaults, root_parser):
         "--parse",
         metavar="REGEX",
         help="Regex parsing the version string",
-        default=defaults.get(
-            "parse", r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"
-        ),
+        default=defaults.get("parse", r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)"),
     )
     parser2.add_argument(
         "--serialize",
@@ -459,9 +442,7 @@ def _assemble_new_version(
         try:
             if current_version and positionals:
                 logger.info("Attempting to increment part '%s'", positionals[0])
-                new_version = current_version.bump(
-                    positionals[0], version_config.order()
-                )
+                new_version = current_version.bump(positionals[0], version_config.order())
                 logger.info("Values are now: %s", keyvaluestring(new_version._values))
                 defaults["new_version"] = version_config.serialize(new_version, context)
         except MissingValueForSerializationException as e:
@@ -564,18 +545,14 @@ def _parse_arguments_phase_3(remaining_argv, positionals, defaults, parser2):
         metavar="TAG_MESSAGE",
         dest="tag_message",
         help="Tag message",
-        default=defaults.get(
-            "tag_message", "Bump version: {current_version} → {new_version}"
-        ),
+        default=defaults.get("tag_message", "Bump version: {current_version} → {new_version}"),
     )
     parser3.add_argument(
         "--message",
         "-m",
         metavar="COMMIT_MSG",
         help="Commit message",
-        default=defaults.get(
-            "message", "Bump version: {current_version} → {new_version}"
-        ),
+        default=defaults.get("message", "Bump version: {current_version} → {new_version}"),
     )
     parser3.add_argument(
         "--message-emoji",
@@ -643,9 +620,7 @@ def _check_files_contain_version(files, current_version, context) -> None:
         f.should_contain_version(current_version, context)
 
 
-def _replace_version_in_files(
-    files, current_version, new_version, dry_run, context
-) -> None:
+def _replace_version_in_files(files, current_version, new_version, dry_run, context) -> None:
     # change version string in files
     for f in files:
         f.replace(current_version, new_version, context, dry_run)
@@ -681,9 +656,7 @@ def _update_config_file(
         logger.info(new_config.getvalue())
 
         if write_to_config_file:
-            with open(
-                config_file, "wt", encoding="utf-8", newline=config_newlines
-            ) as f:
+            with open(config_file, "wt", encoding="utf-8", newline=config_newlines) as f:
                 f.write(new_config.getvalue().strip() + "\n")
 
     except UnicodeEncodeError:
@@ -707,9 +680,7 @@ def _commit_to_vcs(
     commit_files = [f.path for f in files]
     if config_file_exists:
         commit_files.append(config_file)
-    assert vcs.is_usable(), "Did find '{}' unusable, unable to commit.".format(
-        vcs.__name__
-    )
+    assert vcs.is_usable(), "Did find '{}' unusable, unable to commit.".format(vcs.__name__)
     do_commit = args.commit and not args.dry_run
     logger.info(
         "%s %s commit",
@@ -733,9 +704,7 @@ def _commit_to_vcs(
     }
     context.update(time_context)
     context.update(prefixed_environ())
-    context.update(
-        {"current_" + part: current_version[part].value for part in current_version}
-    )
+    context.update({"current_" + part: current_version[part].value for part in current_version})
     context.update({"new_" + part: new_version[part].value for part in new_version})
     context.update(special_char_context)
 

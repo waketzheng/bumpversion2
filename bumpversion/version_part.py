@@ -85,9 +85,7 @@ class VersionPart:
         return self.value
 
     def __repr__(self) -> str:
-        return "<bumpversion.VersionPart:{}:{}>".format(
-            self.config.__class__.__name__, self.value
-        )
+        return "<bumpversion.VersionPart:{}:{}>".format(self.config.__class__.__name__, self.value)
 
     def __eq__(self, other) -> bool:
         return self.value == other.value
@@ -138,9 +136,7 @@ class Version:
 
 
 def labels_for_format(serialize_format) -> Iterator[str]:
-    return (
-        label for _, label, _, _ in string.Formatter().parse(serialize_format) if label
-    )
+    return (label for _, label, _, _ in string.Formatter().parse(serialize_format) if label)
 
 
 class VersionConfig:
@@ -204,9 +200,7 @@ class VersionConfig:
 
         return v
 
-    def _serialize(
-        self, version, serialize_format, context, raise_if_incomplete=False
-    ) -> str:
+    def _serialize(self, version, serialize_format, context, raise_if_incomplete=False) -> str:
         """
         Attempts to serialize a version with the given serialization format.
 
@@ -260,27 +254,19 @@ class VersionConfig:
     def _choose_serialize_format(self, version: Version, context) -> str:
         chosen = None
 
-        logger.debug(
-            "Available serialization formats: '%s'", "', '".join(self.serialize_formats)
-        )
+        logger.debug("Available serialization formats: '%s'", "', '".join(self.serialize_formats))
 
         for serialize_format in self.serialize_formats:
             try:
-                self._serialize(
-                    version, serialize_format, context, raise_if_incomplete=True
-                )
+                self._serialize(version, serialize_format, context, raise_if_incomplete=True)
                 # Prefer shorter or first search expression.
                 chosen_part_count = None
                 if chosen:
                     chosen_part_count = len(list(string.Formatter().parse(chosen)))
-                serialize_part_count = len(
-                    list(string.Formatter().parse(serialize_format))
-                )
+                serialize_part_count = len(list(string.Formatter().parse(serialize_format)))
                 if not chosen or chosen_part_count > serialize_part_count:
                     chosen = serialize_format
-                    logger.debug(
-                        "Found '%s' to be a usable serialization format", chosen
-                    )
+                    logger.debug("Found '%s' to be a usable serialization format", chosen)
                 else:
                     logger.debug(
                         "Found '%s' usable serialization format, but it's longer",

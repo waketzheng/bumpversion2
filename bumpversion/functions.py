@@ -31,9 +31,7 @@ class NumericFunction(Function):
                 _, _, _ = self.FIRST_NUMERIC.search(first_value).groups()  # type:ignore
             except AttributeError:
                 raise ValueError(
-                    "The given first value {} does not contain any digit".format(
-                        first_value
-                    )
+                    "The given first value {} does not contain any digit".format(first_value)
                 ) from None
         else:
             first_value = 0
@@ -60,9 +58,7 @@ class ValuesFunction(Function):
     you get a ValueError exception.
     """
 
-    def __init__(
-        self, values, optional_value=None, first_value=None, independent=False
-    ) -> None:
+    def __init__(self, values, optional_value=None, first_value=None, independent=False) -> None:
         if not values:
             raise ValueError("Version part values cannot be empty") from None
 
@@ -73,9 +69,7 @@ class ValuesFunction(Function):
 
         if optional_value not in values:
             raise ValueError(
-                "Optional value {} must be included in values {}".format(
-                    optional_value, values
-                )
+                "Optional value {} must be included in values {}".format(optional_value, values)
             ) from None
 
         self.optional_value = optional_value
@@ -85,9 +79,7 @@ class ValuesFunction(Function):
 
         if first_value not in values:
             raise ValueError(
-                "First value {} must be included in values {}".format(
-                    first_value, values
-                )
+                "First value {} must be included in values {}".format(first_value, values)
             ) from None
 
         self.first_value = first_value

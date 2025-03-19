@@ -1,5 +1,4 @@
 import pytest
-
 from bumpversion.version_part import (
     ConfiguredVersionPartConfiguration,
     NumericVersionPartConfiguration,
@@ -49,9 +48,7 @@ def test_version_part_format(confvpc):
 
 
 def test_version_part_equality(confvpc):
-    assert VersionPart(confvpc.first_value, confvpc) == VersionPart(
-        confvpc.first_value, confvpc
-    )
+    assert VersionPart(confvpc.first_value, confvpc) == VersionPart(confvpc.first_value, confvpc)
 
 
 def test_version_part_null(confvpc):

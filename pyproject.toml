@@ -13,7 +13,7 @@ python = "^3.8"
 
 [tool.poetry.group.dev.dependencies]
 fast-dev-cli = {version=">=0.11.1", python=">=3.10"}
-pytest = "^8.3.3"
+pytest = "^8.3.5"
 testfixtures = "^8.3.0"
 
 [tool.poetry.scripts]
