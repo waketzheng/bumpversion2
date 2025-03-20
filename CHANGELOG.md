@@ -1,6 +1,7 @@
 **unreleased**
-**v1.4.4**
 **v1.4.4-dev**
+
+## [v1.4.4] - 2025-03-20
 - Drop support for python3.8
 - Fix poetry v2 add error
 
