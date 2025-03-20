@@ -20,7 +20,7 @@ We'd love to accept your patches and contributions to this project. There are ju
 
 Execute the following commands:
 
-    git checkout master
+    git checkout main
     git pull
     make test
     make lint
@@ -28,4 +28,4 @@ Execute the following commands:
     make dist
     make upload
     bumpversion --no-tag patch
-    git push origin master --tags
+    git push origin main --tags

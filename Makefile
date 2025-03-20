@@ -6,8 +6,7 @@ local_test:
 	PYTHONPATH=. pytest tests/
 
 lint:
-	pip install pylint
-	pylint bumpversion
+	poetry run fast lint
 
 debug_test:
 	docker-compose build test
@@ -17,7 +16,7 @@ clean:
 	rm -rf dist build *.egg-info
 
 dist:	clean
-	python3 setup.py sdist bdist_wheel
+	poetry build
 
 upload:
 	twine upload dist/*
