@@ -14,7 +14,7 @@ version = "0"  # manage by poetry-plugin-version
 packages = [{include="bumpversion"}]
 
 [tool.poetry.group.dev.dependencies]
-fast-dev-cli = "^0.12.0"
+fast-dev-cli = "^0.13.0"
 pytest = "^8.3.5"
 testfixtures = "^8.3.0"
 

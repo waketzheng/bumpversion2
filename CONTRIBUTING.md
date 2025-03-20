@@ -25,7 +25,6 @@ Execute the following commands:
     make test
     make lint
     bumpversion release
-    make dist
     make upload
     bumpversion --no-tag patch
-    git push origin main --tags
+    git push --tags
