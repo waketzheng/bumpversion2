@@ -1,10 +1,12 @@
 [project]
 name = "bumpversion2"
-description = ""
+description = "Make it easy to bump version by command line."
 authors = [{name="Waket Zheng", email="waketzheng@gmail.com"}]
 license = {text="MIT"}
 readme = "README.md"
+keywords = ["bumpversion"]
 requires-python = ">=3.9"
+dynamic = [ "version" ]
 dependencies = []
 
 [tool.poetry]
