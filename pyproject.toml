@@ -1,3 +1,10 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+version = {source="file", path="bumpversion/__init__.py"}
+
 [project]
 name = "bumpversion2"
 description = "Make it easy to bump version by command line."
@@ -9,14 +16,12 @@ requires-python = ">=3.9"
 dynamic = [ "version" ]
 dependencies = []
 
-[tool.poetry]
-version = "0"  # manage by poetry-plugin-version
-packages = [{include="bumpversion"}]
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.15.0"
-pytest = "^8.3.5"
-testfixtures = "^8.3.0"
+[dependency-groups]
+dev = [
+    "mypy >=1.17.1",
+    "pytest >=8.3.5",
+    "testfixtures >=8.3.0",
+]
 
 [project.scripts]
 bumpversion = "bumpversion:cli.main"
@@ -33,7 +38,7 @@ ignore = ["UP031"] # https://docs.astral.sh/ruff/rules/printf-string-formatting/
 
 [tool.mypy]
 pretty = true
-ignore_missing_imports = true
+#ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["tests.test_functions"]
@@ -46,7 +51,3 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = ["tests.test_cli"]
 check_untyped_defs = true
-
-[build-system]
-requires = ["poetry-plugin-version"]
-build-backend = "poetry_plugin_version.api"

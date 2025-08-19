@@ -1,42 +1,36 @@
 deps:
-	poetry install --all-extras --all-groups
-ifeq ($(shell poetry run --no-plugins which ruff),)
-	@echo 'Command "ruff" not found! You may need to install it by `pipx install ruff`'
+	uv sync --all-extras --all-groups
+ifeq ($(shell pdm run which ruff),)
+	@echo 'Command "ruff" not found! You may need to install it by `pipx install ruff` or `uv tool install ruff`'
 endif
 
 local_test:
-	PYTHONPATH=. poetry run pytest tests/
+	PYTHONPATH=. pdm run pytest tests/
 
-test:
-ifeq ($(shell poetry run --no-plugins which mypy),)
-	$(MAKE) deps
-endif
+_test:
 ifneq ($(shell which docker-compose),)
 	docker-compose build test
 	docker-compose run test
 else
 	$(MAKE) local_test
 endif
+test: deps _test
 
-lint:
-ifeq ($(shell poetry run --no-plugins which mypy),)
-	$(MAKE) deps
-endif
-ifeq ($(shell poetry run --no-plugins which fast),)
-	poetry run fast lint
-endif
-	poetry run ruff format
-	poetry run ruff check --fix
-	poetry run mypy .
+_lint:
+	ruff format
+	ruff check --fix
+	mypy .
+lint: deps _lint
 
 debug_test:
 	docker-compose build test
 	docker-compose run test /bin/bash
 
 dist:
-	poetry build --clean
+	rm -fR dist/
+	uv build
 
 upload:
-	poetry run fast upload
+	pdm run fast upload
 
 .PHONY: dist upload test debug_test deps lint
