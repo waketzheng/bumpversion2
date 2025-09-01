@@ -13,20 +13,17 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
       - name: Check git is working
         run: |
           git config --global user.email "bumpversion-test-git@github.actions"
@@ -46,12 +43,13 @@ jobs:
           pip install poetry
           poetry config virtualenvs.create false
           poetry self add poetry-plugin-version
-          poetry install
+      - name: Install deps
+        run: uv sync --active --inexact --all-extras --all-groups
       - uses: astral-sh/ruff-action@v3
       - name: Check style
         run: |
           ruff format --check
           ruff check
-          mypy .
+          uv run mypy .
       - name: Run tests
-        run: pytest -s -r a '[]' tests/ --import-mode importlib
+        run: uv run pytest -s -r a '[]' tests/ --import-mode importlib

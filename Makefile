@@ -1,8 +1,14 @@
 deps:
-	uv sync --all-extras --all-groups
+	uv sync $(options) --active --inexact --all-extras --all-groups
 ifeq ($(shell pdm run which ruff),)
 	@echo 'Command "ruff" not found! You may need to install it by `pipx install ruff` or `uv tool install ruff`'
 endif
+
+venv:
+	pdm venv create $(options) $(version)
+
+up:
+	uv lock --upgrade --verbose
 
 local_test:
 	PYTHONPATH=. pdm run pytest tests/
@@ -29,6 +35,8 @@ debug_test:
 dist:
 	rm -fR dist/
 	uv build
+
+build: deps dist
 
 upload:
 	pdm run fast upload

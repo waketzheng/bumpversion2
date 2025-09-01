@@ -133,3 +133,4 @@ Session.vim
 tags
 .pytest_cache
 .dmypy.json
+.pdm-python

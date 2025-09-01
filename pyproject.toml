@@ -38,7 +38,7 @@ ignore = ["UP031"] # https://docs.astral.sh/ruff/rules/printf-string-formatting/
 
 [tool.mypy]
 pretty = true
-#ignore_missing_imports = true
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["tests.test_functions"]
