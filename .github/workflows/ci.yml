@@ -33,6 +33,9 @@ jobs:
           git --version
           git config --list
           git fetch --tags
+      - name: Install Mercurial via Chocolatey
+        if: matrix.os == 'windows-latest'
+        run: choco install mercurial -y
       - name: Check mercurial is working
         run: |
           echo -e '[ui]\nusername = Testing Mercurial on Travis CI <bumpversion-test-hg@travis.ci>' > ~/.hgrc
