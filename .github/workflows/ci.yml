@@ -38,7 +38,6 @@ jobs:
         run: |
           uv tool install mercurial
           # winget install Mercurial.Mercurial -e -y
-          refreshenv
       - name: Check mercurial is working
         run: |
           echo -e '[ui]\nusername = Testing Mercurial on Travis CI <bumpversion-test-hg@travis.ci>' > ~/.hgrc
