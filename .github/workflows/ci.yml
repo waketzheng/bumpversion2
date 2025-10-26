@@ -36,7 +36,8 @@ jobs:
       - name: Install Mercurial via Chocolatey
         if: matrix.os == 'windows-latest'
         run: |
-          choco install gh -y --limitoutput
+          winget install Mercurial.Mercurial -e
+          uv tool install mercurial
           refreshenv
       - name: Check mercurial is working
         run: |
