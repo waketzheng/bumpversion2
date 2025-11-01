@@ -24,7 +24,6 @@ jobs:
           allow-prereleases: true
       - uses: astral-sh/setup-uv@v7
         with:
-          activate-environment: true
           enable-cache: true
       - name: Check git is working
         run: |
