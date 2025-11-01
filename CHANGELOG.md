@@ -1,4 +1,5 @@
 **unreleased**
+**v1.5.0**
 
 **v1.5.0-dev**
 - Drop support for python3.9
