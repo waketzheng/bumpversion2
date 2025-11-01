@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import string
+import sys
 from collections.abc import Iterator
 
 from bumpversion.exceptions import (
@@ -13,10 +14,10 @@ from bumpversion.exceptions import (
 from bumpversion.functions import Function, NumericFunction, ValuesFunction
 from bumpversion.utils import keyvaluestring
 
-try:
+if sys.version_info >= (3, 11):
     import re._constants as sre_constants  # type:ignore[import-untyped]
-except ImportError:
-    import sre_constants
+else:
+    import sre_constants  # This is a standard library and deprecated at Python3.11
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class Version:
                 new_values[label] = self._values[label].copy()
 
         if not bumped:
-            raise InvalidVersionPartException("No part named %r" % part_name)
+            raise InvalidVersionPartException(f"No part named {part_name}")
 
         new_version = Version(new_values)
 
