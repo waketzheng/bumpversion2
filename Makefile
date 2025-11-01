@@ -1,25 +1,44 @@
-test:
-	docker-compose build test
-	docker-compose run test
+deps:
+	uv sync $(options) --active --inexact --all-extras --all-groups
+ifeq ($(shell pdm run which ruff),)
+	@echo 'Command "ruff" not found! You may need to install it by `pipx install ruff` or `uv tool install ruff`'
+endif
+
+venv:
+	pdm venv create $(options) $(version)
+
+up:
+	uv lock --upgrade --verbose
 
 local_test:
-	PYTHONPATH=. pytest tests/
+	PYTHONPATH=. pdm run pytest tests/
 
-lint:
-	pip install pylint
-	pylint bumpversion
+_test:
+ifneq ($(shell which docker-compose),)
+	docker-compose build test
+	docker-compose run test
+else
+	$(MAKE) local_test
+endif
+test: deps _test
+
+_lint:
+	ruff format
+	ruff check --fix
+	mypy .
+lint: deps _lint
 
 debug_test:
 	docker-compose build test
 	docker-compose run test /bin/bash
 
-clean:
-	rm -rf dist build *.egg-info
+dist:
+	rm -fR dist/
+	uv build
 
-dist:	clean
-	python3 setup.py sdist bdist_wheel
+build: deps dist
 
 upload:
-	twine upload dist/*
+	pdm run fast upload
 
-.PHONY: dist upload test debug_test
+.PHONY: dist upload test debug_test deps lint

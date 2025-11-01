@@ -1,5 +1,9 @@
 **unreleased**
-**v1.4.4-dev**
+**v1.4.5-dev**
+
+## [v1.4.4] - 2025-03-20
+- Drop support for python3.8
+- Fix poetry v2 add error
 
 ## [v1.4.3] - 2024-11-04
 - Default to add one more space behind bump emoji

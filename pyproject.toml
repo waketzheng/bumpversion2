@@ -1,20 +1,27 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+version = {source="file", path="bumpversion/__init__.py"}
+
 [project]
 name = "bumpversion2"
-description = ""
+description = "Make it easy to bump version by command line."
 authors = [{name="Waket Zheng", email="waketzheng@gmail.com"}]
 license = {text="MIT"}
 readme = "README.md"
-requires-python = ">=3.9"
+keywords = ["bumpversion"]
+requires-python = ">=3.10"
+dynamic = [ "version" ]
 dependencies = []
 
-[tool.poetry]
-version = "0"  # manage by poetry-plugin-version
-packages = [{include="bumpversion"}]
-
-[tool.poetry.group.dev.dependencies]
-fast-dev-cli = "^0.12.0"
-pytest = "^8.3.5"
-testfixtures = "^8.3.0"
+[dependency-groups]
+dev = [
+    "mypy >=1.18.2",
+    "pytest >=8.4.2",
+    "testfixtures >=8.3.0",
+]
 
 [project.scripts]
 bumpversion = "bumpversion:cli.main"
@@ -44,7 +51,3 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = ["tests.test_cli"]
 check_untyped_defs = true
-
-[build-system]
-requires = ["poetry-plugin-version"]
-build-backend = "poetry_plugin_version.api"
