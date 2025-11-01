@@ -38,7 +38,7 @@ dist:
 
 build: deps dist
 
-upload:
+upload: dist
 	pdm run fast upload
 
 .PHONY: dist upload test debug_test deps lint
