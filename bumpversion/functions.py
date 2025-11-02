@@ -8,7 +8,7 @@ class Function:
         self.optional_value = self.first_value = str(first_value)
         self.independent = independent
 
-    def bump(self, value):
+    def bump(self, value) -> str:
         raise NotImplementedError
 
 

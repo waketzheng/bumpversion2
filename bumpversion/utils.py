@@ -78,12 +78,14 @@ class ConfiguredFile:
 
         with open(self.path, encoding="utf-8") as f:
             search_lines = search.splitlines()
+            len_search_lines = len(search_lines)
             lookbehind = []
 
             for lineno, line in enumerate(f.readlines()):
                 lookbehind.append(line.rstrip("\n"))
+                len_lookbehind = len(lookbehind)
 
-                if len(lookbehind) > len(search_lines):
+                if len_lookbehind > len_search_lines:
                     lookbehind = lookbehind[1:]
 
                 if (
@@ -95,7 +97,7 @@ class ConfiguredFile:
                         "Found '%s' in %s at line %s: %s",
                         search,
                         self.path,
-                        lineno - (len(lookbehind) - 1),
+                        lineno - (len_lookbehind - 1),
                         line.rstrip(),
                     )
                     return True

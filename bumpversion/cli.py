@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import warnings
+from collections.abc import Sequence
 from configparser import (
     ConfigParser,
     NoOptionError,
@@ -40,7 +41,7 @@ from bumpversion.version_part import (
 DESCRIPTION = "{}: v{} (using Python v{})".format(
     __title__, __version__, sys.version.split("\n")[0].split(" ")[0]
 )
-VCS = [Git, Mercurial]
+VCS: list[type[Git | Mercurial]] = [Git, Mercurial]
 
 # detect either
 # bumpversion:part:value
@@ -157,7 +158,9 @@ def main(original_args=None) -> None:
         _tag_in_vcs(vcs, context, args)
 
 
-def split_args_in_optional_and_positional(args):
+def split_args_in_optional_and_positional(
+    args: Sequence[str],
+) -> tuple[list[str], list[str]]:
     # manually parsing positional arguments because stupid argparse can't mix
     # positional and optional arguments
 
@@ -223,7 +226,7 @@ def _parse_arguments_phase_1(original_args):
     return args, known_args, root_parser, positionals
 
 
-def _setup_logging(show_list, verbose):
+def _setup_logging(show_list, verbose) -> None:
     logformatter = logging.Formatter("%(message)s")
     if not logger.handlers:
         ch1 = logging.StreamHandler(sys.stderr)
@@ -244,7 +247,7 @@ def _setup_logging(show_list, verbose):
     logger.debug("Starting %s", DESCRIPTION)
 
 
-def _determine_vcs_usability():
+def _determine_vcs_usability() -> dict:
     vcs_info = {}
     for vcs in VCS:
         if vcs.is_usable():
@@ -252,14 +255,14 @@ def _determine_vcs_usability():
     return vcs_info
 
 
-def _determine_current_version(vcs_info):
+def _determine_current_version(vcs_info) -> dict:
     defaults = {}
     if "current_version" in vcs_info:
         defaults["current_version"] = vcs_info["current_version"]
     return defaults
 
 
-def _determine_config_file(explicit_config):
+def _determine_config_file(explicit_config) -> str:
     if explicit_config:
         return explicit_config
     if not os.path.exists(".bumpversion.cfg") and os.path.exists("setup.cfg"):
@@ -438,7 +441,7 @@ def _parse_arguments_phase_2(args, known_args, defaults, root_parser):
     return known_args, parser2, remaining_argv
 
 
-def _setup_versionconfig(known_args, part_configs):
+def _setup_versionconfig(known_args, part_configs) -> VersionConfig:
     try:
         version_config = VersionConfig(
             parse=known_args.parse,
