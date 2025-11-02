@@ -25,6 +25,6 @@ Execute the following commands:
     make test
     make lint
     bumpversion release
-    make upload
+    make dist
     bumpversion --no-tag patch
-    git push --tags
+    git push --tags  # Will auto publish new version to pypi by github action
