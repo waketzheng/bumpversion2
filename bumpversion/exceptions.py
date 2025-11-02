@@ -5,24 +5,23 @@ class BumpVersionException(Exception):
     """Custom base class for all BumpVersion exception types."""
 
 
-class IncompleteVersionRepresentationException(BumpVersionException):
-    def __init__(self, message):
+class MessageMixin:
+    def __init__(self, message) -> None:
         self.message = message
 
 
-class MissingValueForSerializationException(BumpVersionException):
-    def __init__(self, message):
-        self.message = message
+class IncompleteVersionRepresentationException(MessageMixin, BumpVersionException): ...
 
 
-class WorkingDirectoryIsDirtyException(BumpVersionException):
-    def __init__(self, message):
-        self.message = message
+class MissingValueForSerializationException(MessageMixin, BumpVersionException): ...
 
 
-class MercurialDoesNotSupportSignedTagsException(BumpVersionException):
-    def __init__(self, message):
-        self.message = message
+class WorkingDirectoryIsDirtyException(MessageMixin, BumpVersionException): ...
+
+
+class MercurialDoesNotSupportSignedTagsException(
+    MessageMixin, BumpVersionException
+): ...
 
 
 class VersionNotFoundException(BumpVersionException):
