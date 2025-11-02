@@ -2,6 +2,8 @@
 **v1.5.0**
 
 **v1.5.0-dev**
+
+## [v1.5.0] - 2025-11-01
 - Drop support for python3.9
 - Migrate from poetry to uv
 
