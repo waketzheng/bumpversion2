@@ -131,7 +131,10 @@ class ConfiguredFile:
         else:
             file_content_after = file_content_before.replace(search_for, replace_with)
 
-        if file_content_before == file_content_after:
+        if (
+            file_content_before == file_content_after
+            and current_version.original is not None
+        ):
             # TODO expose this to be configurable
             file_content_after = file_content_before.replace(
                 current_version.original, replace_with

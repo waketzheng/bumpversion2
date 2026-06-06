@@ -22,18 +22,22 @@ _test:
 
 test: deps _test
 
+_codeqc *args:
+    ty check
+    uv run --no-sync mypy .
+    just --fmt {{ args }}
+
 _lint *args:
     ruff format
-    ruff check --fix {{args}}
-    uv run --no-sync mypy .
+    ruff check --fix {{ args }}
+    @just _codeqc
 
 lint: deps _lint
 
 _check:
     ruff format --check
     ruff check
-    uv run --no-sync mypy .
-    just --fmt --check
+    @just _codeqc --check
 
 check: deps _check local_test
 
@@ -42,10 +46,10 @@ debug_test:
     docker-compose run test /bin/bash
 
 dist *args:
-    uv build --clear {{args}}
+    uv build --clear {{ args }}
 
 build *args: deps
-    @just dist {{args}}
+    @just dist {{ args }}
 
 upload: dist
     pdm run fast upload

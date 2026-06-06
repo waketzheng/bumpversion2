@@ -17,6 +17,7 @@ from configparser import (
     RawConfigParser,
 )
 from datetime import datetime, timezone
+from typing import Any
 
 from bumpversion import __title__, __version__
 from bumpversion.exceptions import (
@@ -58,6 +59,17 @@ logger_list = logging.getLogger("bumpversion.list")
 logger = logging.getLogger(__name__)
 time_context = {"now": datetime.now(), "utcnow": datetime.now(timezone.utc)}
 special_char_context = {c: c for c in ("#", ";")}
+
+
+class OptionxMixin:
+    def optionxform(self, optionstr: str) -> str:
+        return optionstr
+
+
+class PreserveCaseConfigParser(OptionxMixin, ConfigParser): ...
+
+
+class PreserveCaseRawConfigParser(OptionxMixin, RawConfigParser): ...
 
 
 OPTIONAL_ARGUMENTS_THAT_TAKE_VALUES = [
@@ -270,14 +282,13 @@ def _determine_config_file(explicit_config) -> str:
     return ".bumpversion.cfg"
 
 
-def _load_configuration(config_file, explicit_config, defaults):
+def _load_configuration(config_file: str, explicit_config, defaults) -> tuple:
     # setup.cfg supports interpolation - for compatibility we must do the same.
-    if os.path.basename(config_file) == "setup.cfg":
-        config = ConfigParser("")
-    else:
-        config = RawConfigParser("")
-    # don't transform keys to lowercase (which would be the default)
-    config.optionxform = lambda option: option
+    config = (
+        PreserveCaseConfigParser()
+        if os.path.basename(config_file) == "setup.cfg"
+        else PreserveCaseRawConfigParser()
+    )
     config.add_section("bumpversion")
     config_file_exists = os.path.exists(config_file)
 
@@ -333,10 +344,15 @@ def _load_configuration(config_file, explicit_config, defaults):
 
         section_type = section_type_match.groupdict()
         section_value = section_type.get("value")
-        section_config = dict(config.items(section_name))
+        if section_value is None:
+            continue
+        section_config: dict[str, Any] = dict(config.items(section_name))
 
         if section_type.get("part"):
-            ThisVersionPartConfiguration = NumericVersionPartConfiguration
+            ThisVersionPartConfiguration: (
+                type[NumericVersionPartConfiguration]
+                | type[ConfiguredVersionPartConfiguration]
+            ) = NumericVersionPartConfiguration
 
             if "values" in section_config:
                 section_config["values"] = list(
