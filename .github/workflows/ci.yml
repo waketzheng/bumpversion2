@@ -58,4 +58,4 @@ jobs:
           ruff check
           uv run --no-sync mypy .
       - name: Run tests
-        run: uv run --no-sync pytest -s -r a '[]' tests/ --import-mode importlib
+        run: uv run --no-sync pytest -s -r a tests/ --import-mode importlib
