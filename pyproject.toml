@@ -2,8 +2,8 @@
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
-[tool.pdm]
-version = {source="file", path="bumpversion/__init__.py"}
+[tool.pdm.version]
+path = "bumpversion/__init__.py"
 
 [project]
 name = "bumpversion2"

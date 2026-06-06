@@ -1,44 +1,45 @@
+JUST ?= just
+
 deps:
-	uv sync $(options) --active --inexact --all-extras --all-groups
-ifeq ($(shell pdm run which ruff),)
-	@echo 'Command "ruff" not found! You may need to install it by `pipx install ruff` or `uv tool install ruff`'
-endif
+	$(JUST) deps $(options)
 
 venv:
-	pdm venv create $(options) $(version)
+	$(JUST) venv $(options) $(version)
 
 up:
-	uv lock --upgrade --verbose
+	$(JUST) up
 
 local_test:
-	PYTHONPATH=. pdm run pytest tests/
+	$(JUST) local_test
 
 _test:
-ifneq ($(shell which docker-compose),)
-	docker-compose build test
-	docker-compose run test
-else
-	$(MAKE) local_test
-endif
-test: deps _test
+	$(JUST) _test
+
+test:
+	$(JUST) test
 
 _lint:
-	ruff format
-	ruff check --fix
-	mypy .
-lint: deps _lint
+	$(JUST) _lint
+
+lint:
+	$(JUST) lint
+
+_check:
+	$(JUST) _check
+
+check:
+	$(JUST) check
 
 debug_test:
-	docker-compose build test
-	docker-compose run test /bin/bash
+	$(JUST) debug_test
 
 dist:
-	rm -fR dist/
-	uv build
+	$(JUST) dist
 
-build: deps dist
+build:
+	$(JUST) build
 
-upload: dist
-	pdm run fast upload
+upload:
+	$(JUST) upload
 
-.PHONY: dist upload test debug_test deps lint
+.PHONY: deps venv up local_test _test test _lint lint _check check debug_test dist build upload
